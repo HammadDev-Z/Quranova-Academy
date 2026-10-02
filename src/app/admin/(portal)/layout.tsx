@@ -1,6 +1,6 @@
 import { and, count, eq, lt, ne } from "drizzle-orm";
 import { AdminNav, type NavGroup } from "@/components/admin/admin-nav";
-import { db, invoices, leads } from "@/db";
+import { db, invoices, leads, progressReports } from "@/db";
 import { todayKey } from "@/lib/admin/time";
 import { logout } from "@/lib/auth/actions";
 import { requireAdmin } from "@/lib/auth/session";
@@ -10,12 +10,13 @@ export default async function PortalLayout({ children }: { children: React.React
   const user = await requireAdmin();
   const { adminTimezone } = await getRawSettings();
 
-  const [[newLeads], [overdue]] = await Promise.all([
+  const [[newLeads], [overdue], [submittedReports]] = await Promise.all([
     db.select({ n: count() }).from(leads).where(eq(leads.status, "new")),
     db
       .select({ n: count() })
       .from(invoices)
       .where(and(eq(invoices.status, "unpaid"), lt(invoices.dueOn, todayKey(adminTimezone)), ne(invoices.dueOn, ""))),
+    db.select({ n: count() }).from(progressReports).where(eq(progressReports.status, "submitted")),
   ]);
 
   const groups: NavGroup[] = [
@@ -33,7 +34,8 @@ export default async function PortalLayout({ children }: { children: React.React
       title: "Teaching",
       items: [
         { href: "/admin/classes", label: "Class schedule" },
-        { href: "/admin/reports", label: "Progress reports" },
+        { href: "/admin/reports", label: "Progress reports", badge: submittedReports.n },
+        { href: "/admin/materials", label: "Learning materials" },
       ],
     },
     { title: "Money", items: [{ href: "/admin/invoices", label: "Invoices", badge: overdue.n }] },

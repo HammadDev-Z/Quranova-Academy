@@ -97,6 +97,10 @@ const badgeTone: Record<string, string> = {
   paid: "bg-green-100 text-green-800",
   void: "bg-gray-200 text-gray-700",
   overdue: "bg-red-100 text-red-800",
+  // reports
+  draft: "bg-gray-200 text-gray-700",
+  submitted: "bg-amber-100 text-amber-800",
+  reviewed: "bg-green-100 text-green-800",
   // misc
   contact: "bg-sky-100 text-sky-800",
   male: "bg-sky-100 text-sky-800",

@@ -211,9 +211,30 @@ export const classSessions = sqliteTable("class_sessions", {
   meetingUrl: text("meeting_url").notNull().default(""),
   lessonNotes: text("lesson_notes").notNull().default(""),
   homework: text("homework").notNull().default(""),
+  // Set when a class is marked as a student's or teacher's leave: it can be
+  // rescheduled until this date, up to rescheduleMax times.
+  rescheduleDeadline: integer("reschedule_deadline", { mode: "timestamp_ms" }),
+  rescheduleCount: integer("reschedule_count").notNull().default(0),
   createdAt: createdAt(),
   updatedAt: updatedAt(),
 });
+
+export const rescheduleRequestedBy = ["teacher", "admin"] as const;
+
+/** History of every time a class was moved, kept even after the class itself changes. */
+export const classReschedules = sqliteTable("class_reschedules", {
+  id: id(),
+  classId: text("class_id")
+    .notNull()
+    .references(() => classSessions.id, { onDelete: "cascade" }),
+  oldStartsAt: integer("old_starts_at", { mode: "timestamp_ms" }).notNull(),
+  newStartsAt: integer("new_starts_at", { mode: "timestamp_ms" }).notNull(),
+  requestedBy: text("requested_by", { enum: rescheduleRequestedBy }).notNull(),
+  note: text("note").notNull().default(""),
+  createdAt: createdAt(),
+});
+
+export const reportStatuses = ["draft", "submitted", "reviewed"] as const;
 
 export const progressReports = sqliteTable("progress_reports", {
   id: id(),
@@ -226,6 +247,33 @@ export const progressReports = sqliteTable("progress_reports", {
   strengths: text("strengths").notNull().default(""),
   improvements: text("improvements").notNull().default(""),
   rating: integer("rating"), // 1-5
+  status: text("status", { enum: reportStatuses }).notNull().default("draft"),
+  submittedAt: integer("submitted_at", { mode: "timestamp_ms" }),
+  reviewedAt: integer("reviewed_at", { mode: "timestamp_ms" }),
+  reviewedBy: text("reviewed_by").references(() => users.id, { onDelete: "set null" }),
+  createdAt: createdAt(),
+});
+
+/** One weekly recurring slot a teacher says they can teach in. */
+export const availabilitySlots = sqliteTable("availability_slots", {
+  id: id(),
+  teacherId: text("teacher_id")
+    .notNull()
+    .references(() => teachers.id, { onDelete: "cascade" }),
+  weekday: integer("weekday").notNull(), // 0 = Monday ... 6 = Sunday
+  startTime: text("start_time").notNull(), // "HH:MM", in the teacher's own time zone
+  endTime: text("end_time").notNull(),
+  createdAt: createdAt(),
+});
+
+/** Downloadable resources (PDFs, audio, etc.) the admin publishes for teachers. */
+export const materials = sqliteTable("materials", {
+  id: id(),
+  title: text("title").notNull(),
+  category: text("category").notNull().default("General"),
+  fileName: text("file_name").notNull(),
+  fileExt: text("file_ext").notNull(),
+  sizeBytes: integer("size_bytes").notNull().default(0),
   createdAt: createdAt(),
 });
 

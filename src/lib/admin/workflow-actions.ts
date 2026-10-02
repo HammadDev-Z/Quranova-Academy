@@ -3,7 +3,7 @@
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { classSessions, classStatuses, courses, db, guardians, invoices, leadStatuses, leads, students, teachers } from "@/db";
+import { classSessions, classStatuses, courses, db, guardians, invoices, leadStatuses, leads, progressReports, students, teachers } from "@/db";
 import { requireAdmin } from "@/lib/auth/session";
 import { getRawSettings } from "@/lib/settings";
 import { logActivity } from "./log";
@@ -130,6 +130,18 @@ export async function createRecurringClasses(_prev: RecurringState, formData: Fo
   await logActivity(user, "created", "class", studentId, `Scheduled ${rows.length} recurring classes`);
   refresh();
   redirect(`/admin/classes?week=${startDate}&saved=1`);
+}
+
+/* ───────── Progress reports ───────── */
+
+/** Locks a submitted report so the teacher can no longer edit it. */
+export async function markReportReviewed(reportId: string) {
+  const user = await requireAdmin();
+  const [r] = await db.select().from(progressReports).where(eq(progressReports.id, reportId)).limit(1);
+  if (!r) return;
+  await db.update(progressReports).set({ status: "reviewed", reviewedAt: new Date(), reviewedBy: user.id }).where(eq(progressReports.id, reportId));
+  await logActivity(user, "updated", "report", reportId, `Reviewed report for ${r.month}`);
+  refresh();
 }
 
 /* ───────── Invoices ───────── */

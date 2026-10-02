@@ -3,7 +3,7 @@
 import { useActionState } from "react";
 import { Field, Input } from "@/components/form-fields";
 import { Button } from "@/components/ui";
-import { changeOwnPassword, createAdminUser, login, resetUserPassword, type AuthState } from "@/lib/auth/actions";
+import { changeOwnPassword, createAdminUser, createTeacherLogin, login, loginTeacher, resetUserPassword, type AuthState } from "@/lib/auth/actions";
 
 const initial: AuthState = {};
 
@@ -25,6 +25,24 @@ function Notice({ state }: { state: AuthState }) {
 
 export function LoginForm() {
   const [state, action, pending] = useActionState(login, initial);
+  return (
+    <form action={action} className="space-y-5" noValidate>
+      <Notice state={state} />
+      <Field label="Email" name="email">
+        <Input name="email" type="email" autoComplete="username" defaultValue={state.email} required />
+      </Field>
+      <Field label="Password" name="password">
+        <Input name="password" type="password" autoComplete="current-password" required />
+      </Field>
+      <Button type="submit" size="lg" disabled={pending} className="w-full">
+        {pending ? "Signing in…" : "Sign in"}
+      </Button>
+    </form>
+  );
+}
+
+export function TeacherLoginForm() {
+  const [state, action, pending] = useActionState(loginTeacher, initial);
   return (
     <form action={action} className="space-y-5" noValidate>
       <Notice state={state} />
@@ -82,6 +100,22 @@ export function CreateAdminForm() {
       </div>
       <Button type="submit" disabled={pending}>
         {pending ? "Creating…" : "Create admin account"}
+      </Button>
+    </form>
+  );
+}
+
+export function CreateTeacherLoginForm({ teacherId }: { teacherId: string }) {
+  const [state, action, pending] = useActionState(createTeacherLogin.bind(null, teacherId), initial);
+  const e = state.errors ?? {};
+  return (
+    <form action={action} className="space-y-3" noValidate>
+      <Notice state={state} />
+      <Field label="Temporary password" name="password" error={e.password} hint="10+ characters, letters and numbers. Share it with the teacher securely.">
+        <Input name="password" type="text" autoComplete="off" error={e.password} />
+      </Field>
+      <Button type="submit" disabled={pending}>
+        {pending ? "Creating…" : "Create portal login"}
       </Button>
     </form>
   );

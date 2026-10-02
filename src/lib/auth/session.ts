@@ -4,7 +4,7 @@ import { and, eq, gt } from "drizzle-orm";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { cache } from "react";
-import { db, sessions, users } from "@/db";
+import { db, sessions, teachers, users } from "@/db";
 
 export const SESSION_COOKIE = "qa_session";
 const SESSION_DAYS = 7;
@@ -60,4 +60,22 @@ export async function requireAdmin(): Promise<CurrentUser> {
   if (!user) redirect("/admin/login");
   if (user.role !== "admin") redirect("/admin/login?error=forbidden");
   return user;
+}
+
+export type CurrentTeacher = CurrentUser & { teacherId: string };
+
+/** Same idea as requireAdmin(), for the teacher portal. Resolves the linked teacher record too. */
+export async function requireTeacher(): Promise<CurrentTeacher> {
+  const user = await getCurrentUser();
+  if (!user) redirect("/teacher/login");
+  if (user.role !== "teacher") redirect("/teacher/login?error=forbidden");
+
+  const [teacher] = await db
+    .select({ id: teachers.id, active: teachers.active })
+    .from(teachers)
+    .where(eq(teachers.userId, user.id))
+    .limit(1);
+  if (!teacher || !teacher.active) redirect("/teacher/login?error=forbidden");
+
+  return { ...user, teacherId: teacher.id };
 }

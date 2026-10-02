@@ -1,12 +1,14 @@
 import { and, asc, desc, eq, gte, count } from "drizzle-orm";
 import Link from "next/link";
+import { CreateTeacherLoginForm, ResetPasswordForm } from "@/components/admin/auth-forms";
 import { Badge, Panel } from "@/components/admin/ui";
-import { classSessions, db, guardians, invoices, leadStatuses, progressReports, students, teachers } from "@/db";
+import { classSessions, db, guardians, invoices, leadStatuses, progressReports, students, teachers, users } from "@/db";
 import { formatMoney } from "@/lib/admin/format";
 import { paymentMethods } from "@/lib/admin/resources";
 import { formatDateOnly, formatDateTime, todayKey } from "@/lib/admin/time";
-import { convertLeadToStudent, markInvoicePaid, setClassStatus, setLeadStatus } from "@/lib/admin/workflow-actions";
+import { convertLeadToStudent, markInvoicePaid, markReportReviewed, setClassStatus, setLeadStatus } from "@/lib/admin/workflow-actions";
 import { formatLabel } from "@/lib/admin/fields";
+import { setUserActive } from "@/lib/auth/actions";
 
 type Row = Record<string, unknown> & { id: string };
 
@@ -55,7 +57,9 @@ export async function SidePanel({ resource, row, tz }: { resource: string; row: 
     case "invoices":
       return <InvoicePanel row={row} tz={tz} />;
     case "classes":
-      return <ClassPanel row={row} />;
+      return <ClassPanel row={row} tz={tz} />;
+    case "reports":
+      return <ReportPanel row={row} />;
     default:
       return null;
   }
@@ -241,7 +245,8 @@ async function GuardianPanel({ row }: { row: Row }) {
 }
 
 async function TeacherPanel({ row, tz }: { row: Row; tz: string }) {
-  const [mine, upcoming] = await Promise.all([
+  const teacherUserId = row.userId as string | null;
+  const [mine, upcoming, [loginUser]] = await Promise.all([
     db.select().from(students).where(eq(students.teacherId, row.id)).orderBy(asc(students.name)),
     db
       .select()
@@ -249,9 +254,39 @@ async function TeacherPanel({ row, tz }: { row: Row; tz: string }) {
       .where(and(eq(classSessions.teacherId, row.id), gte(classSessions.startsAt, new Date())))
       .orderBy(asc(classSessions.startsAt))
       .limit(6),
+    teacherUserId ? db.select().from(users).where(eq(users.id, teacherUserId)).limit(1) : Promise.resolve([]),
   ]);
+
   return (
     <>
+      <Panel title="Teacher portal login">
+        {loginUser ? (
+          <>
+            <p className="text-sm">
+              {loginUser.email} · <Badge value={loginUser.active ? "active" : "paused"} />
+            </p>
+            <div className="mt-3 space-y-3">
+              <ResetPasswordForm userId={loginUser.id} />
+              <form action={setUserActive.bind(null, loginUser.id, !loginUser.active)}>
+                <button
+                  type="submit"
+                  className={`rounded-lg border px-3 py-1.5 text-sm font-semibold ${loginUser.active ? "border-red-300 text-red-700 hover:bg-red-50" : "border-brand-300 text-brand-700 hover:bg-brand-50"}`}
+                >
+                  {loginUser.active ? "Deactivate login" : "Reactivate login"}
+                </button>
+              </form>
+            </div>
+          </>
+        ) : (
+          <>
+            <p className="text-sm text-muted">
+              No portal login yet. {row.email ? `Creates one for ${row.email}.` : "Add an email on this teacher first."}
+            </p>
+            {row.email ? <div className="mt-3"><CreateTeacherLoginForm teacherId={row.id} /></div> : null}
+          </>
+        )}
+      </Panel>
+
       <Panel title="Contact">
         <Contact email={row.email as string} phone={row.phone as string} />
       </Panel>
@@ -321,33 +356,67 @@ async function InvoicePanel({ row, tz }: { row: Row; tz: string }) {
   );
 }
 
-async function ClassPanel({ row }: { row: Row }) {
+async function ClassPanel({ row, tz }: { row: Row; tz: string }) {
   const [t] = row.teacherId ? await db.select({ name: teachers.name }).from(teachers).where(eq(teachers.id, row.teacherId as string)).limit(1) : [];
   const [s] = await db.select({ name: students.name, timezone: students.timezone }).from(students).where(eq(students.id, row.studentId as string)).limit(1);
+  const deadline = row.rescheduleDeadline as Date | null;
+  const rescheduleCount = (row.rescheduleCount as number) ?? 0;
+  const eligible = deadline && deadline > new Date() && rescheduleCount < 2;
+
   return (
-    <Panel title="Quick status">
-      <p className="text-sm">
-        {s?.name ?? "Student"}
-        {t ? ` with ${t.name}` : " (no teacher yet)"}
-      </p>
-      {s?.timezone && (
-        <p className={small}>
-          Student time: {formatDateTime(row.startsAt as Date, s.timezone)} ({s.timezone})
+    <>
+      <Panel title="Quick status">
+        <p className="text-sm">
+          {s?.name ?? "Student"}
+          {t ? ` with ${t.name}` : " (no teacher yet)"}
         </p>
+        {s?.timezone && (
+          <p className={small}>
+            Student time: {formatDateTime(row.startsAt as Date, s.timezone)} ({s.timezone})
+          </p>
+        )}
+        <div className="mt-3 flex flex-wrap gap-2">
+          {(["completed", "missed_student", "missed_teacher", "cancelled", "scheduled"] as const).map((st) => (
+            <form key={st} action={setClassStatus.bind(null, row.id, st)}>
+              <button
+                type="submit"
+                disabled={row.status === st}
+                className={`rounded-full px-3 py-1 text-xs font-semibold ${row.status === st ? "bg-brand-600 text-white" : "border border-brand-200 text-brand-700 hover:bg-brand-50"}`}
+              >
+                {formatLabel(st)}
+              </button>
+            </form>
+          ))}
+        </div>
+      </Panel>
+      {deadline && (
+        <Panel title="Reschedule">
+          <p className="text-sm">
+            {rescheduleCount} of 2 used.{" "}
+            {eligible ? `The teacher can reschedule until ${formatDateTime(deadline, tz)}.` : "No longer eligible."}
+          </p>
+        </Panel>
       )}
-      <div className="mt-3 flex flex-wrap gap-2">
-        {(["completed", "missed_student", "missed_teacher", "cancelled", "scheduled"] as const).map((st) => (
-          <form key={st} action={setClassStatus.bind(null, row.id, st)}>
-            <button
-              type="submit"
-              disabled={row.status === st}
-              className={`rounded-full px-3 py-1 text-xs font-semibold ${row.status === st ? "bg-brand-600 text-white" : "border border-brand-200 text-brand-700 hover:bg-brand-50"}`}
-            >
-              {formatLabel(st)}
-            </button>
-          </form>
-        ))}
-      </div>
+    </>
+  );
+}
+
+async function ReportPanel({ row }: { row: Row }) {
+  const [s] = await db.select({ name: students.name }).from(students).where(eq(students.id, row.studentId as string)).limit(1);
+  return (
+    <Panel title="Review">
+      <p className="text-sm">
+        {s?.name ?? "Student"} · <Badge value={String(row.status)} />
+      </p>
+      {row.status === "submitted" && (
+        <form action={markReportReviewed.bind(null, row.id)} className="mt-3">
+          <button type="submit" className="rounded-full bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700">
+            Mark reviewed
+          </button>
+        </form>
+      )}
+      {row.status === "reviewed" && <p className={small}>This report is locked and can no longer be edited by the teacher.</p>}
+      {row.status === "draft" && <p className={small}>The teacher has not submitted this report yet.</p>}
     </Panel>
   );
 }

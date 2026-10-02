@@ -15,6 +15,7 @@ import {
   packages,
   posts,
   progressReports,
+  reportStatuses,
   studentStatuses,
   students,
   teachers,
@@ -440,16 +441,19 @@ export const resources: Record<string, Resource> = {
     table: progressReports,
     searchColumns: ["covered", "strengths", "improvements"],
     sort: { column: "month", dir: "desc" },
+    filters: [{ name: "status", label: "Status", options: opts(reportStatuses) }],
     columns: [
       { key: "month", label: "Month", kind: "text", primary: true },
       { key: "studentId", label: "Student", kind: "ref", ref: "students" },
       { key: "teacherId", label: "Teacher", kind: "ref", ref: "teachers" },
+      { key: "status", label: "Status", kind: "badge" },
       { key: "rating", label: "Rating (1-5)", kind: "text" },
     ],
     fields: [
       { name: "studentId", label: "Student", type: "select", optionsFrom: "students", required: true, half: true },
       { name: "teacherId", label: "Teacher", type: "select", optionsFrom: "teachers", half: true },
       { name: "month", label: "Month", type: "month", required: true, half: true },
+      { name: "status", label: "Status", type: "select", options: opts(reportStatuses), required: true, initial: "draft", half: true },
       {
         name: "rating",
         label: "Overall rating",
