@@ -49,8 +49,18 @@ export function Input({ error, className, ...props }: InputProps) {
   );
 }
 
-type SelectProps = React.ComponentProps<"select"> & { name: string; error?: string; options: readonly string[]; placeholder?: string };
-export function Select({ error, options, placeholder, className, ...props }: SelectProps) {
+type SelectProps = React.ComponentProps<"select"> & {
+  name: string;
+  error?: string;
+  options: readonly string[];
+  /** Display text per option value (defaults to the value itself). */
+  labels?: Record<string, string>;
+  /** Disabled "Choose…" row shown first, for required selects. */
+  placeholder?: string;
+  /** Selectable empty row, for optional selects. */
+  emptyLabel?: string;
+};
+export function Select({ error, options, labels, placeholder, emptyLabel, className, ...props }: SelectProps) {
   return (
     <select
       id={props.name}
@@ -64,9 +74,10 @@ export function Select({ error, options, placeholder, className, ...props }: Sel
           {placeholder}
         </option>
       )}
+      {emptyLabel && <option value="">{emptyLabel}</option>}
       {options.map((o) => (
         <option key={o} value={o}>
-          {o}
+          {labels?.[o] ?? o}
         </option>
       ))}
     </select>
