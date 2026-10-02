@@ -1,140 +1,175 @@
-import { and, asc, desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq, gte } from "drizzle-orm";
+import { alias } from "drizzle-orm/sqlite-core";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { AdminPageHeader, Badge, Panel } from "@/components/admin/ui";
-import { Button } from "@/components/ui";
 import { classSessions, courses, db, guardians, progressReports, students } from "@/db";
-import { formatDateTime } from "@/lib/admin/time";
+import { ProgressForm } from "@/components/teacher/forms";
+import { Avatar, PageTitle, Pill, ReportPill, StatusPill, TCard, btnGreen } from "@/components/teacher/ui";
+import { formatDateShort, formatTime12 } from "@/lib/admin/time";
 import { requireTeacher } from "@/lib/auth/session";
-import { getRawSettings } from "@/lib/settings";
 
 type Props = { params: Promise<{ id: string }> };
 
-export async function generateMetadata({ params }: Props) {
-  const { id } = await params;
-  const [s] = await db.select({ name: students.name }).from(students).where(eq(students.id, id)).limit(1);
-  return { title: s?.name ?? "Student" };
-}
+export const metadata = { title: "Student" };
 
-export default async function TeacherStudentPage({ params }: Props) {
+export default async function StudentDetailPage({ params }: Props) {
   const me = await requireTeacher();
   const { id } = await params;
-  const { adminTimezone: tz } = await getRawSettings();
+  const tz = me.timezone;
+  const additional = alias(courses, "additional_course");
 
-  const [student] = await db
+  const [s] = await db
     .select({
       id: students.id,
       name: students.name,
+      studentNo: students.studentNo,
       age: students.age,
       status: students.status,
       country: students.country,
+      timezone: students.timezone,
       notes: students.notes,
-      course: courses.title,
-      guardianId: guardians.id,
-      guardianName: guardians.name,
-      guardianEmail: guardians.email,
-      guardianPhone: guardians.phone,
+      basicPart: students.basicPart,
+      basicPage: students.basicPage,
+      tajweedStep: students.tajweedStep,
+      additionalPart: students.additionalPart,
+      additionalPage: students.additionalPage,
+      parent: guardians.name,
+      parentPhone: guardians.phone,
+      basicCourse: courses.title,
+      additionalCourse: additional.title,
     })
     .from(students)
     .leftJoin(courses, eq(courses.id, students.courseId))
+    .leftJoin(additional, eq(additional.id, students.additionalCourseId))
     .leftJoin(guardians, eq(guardians.id, students.guardianId))
     .where(and(eq(students.id, id), eq(students.teacherId, me.teacherId)))
     .limit(1);
-
-  if (!student) notFound();
+  if (!s) notFound();
 
   const [upcoming, past, reports] = await Promise.all([
     db
       .select()
       .from(classSessions)
-      .where(and(eq(classSessions.studentId, id), eq(classSessions.status, "scheduled")))
+      .where(and(eq(classSessions.studentId, id), eq(classSessions.teacherId, me.teacherId), eq(classSessions.status, "scheduled"), gte(classSessions.startsAt, new Date())))
       .orderBy(asc(classSessions.startsAt))
-      .limit(10),
+      .limit(8),
     db
       .select()
       .from(classSessions)
-      .where(and(eq(classSessions.studentId, id)))
+      .where(and(eq(classSessions.studentId, id), eq(classSessions.teacherId, me.teacherId)))
       .orderBy(desc(classSessions.startsAt))
-      .limit(10),
-    db.select().from(progressReports).where(eq(progressReports.studentId, id)).orderBy(desc(progressReports.month)).limit(6),
+      .limit(12),
+    db.select().from(progressReports).where(and(eq(progressReports.studentId, id), eq(progressReports.teacherId, me.teacherId))).orderBy(desc(progressReports.month)).limit(8),
   ]);
+
+  const withNotes = past.filter((c) => c.status === "completed");
 
   return (
     <>
-      <AdminPageHeader
-        title={student.name}
-        description={[student.course, student.age ? `${student.age} years old` : null, student.country].filter(Boolean).join(" · ")}
-        back={{ href: "/teacher/students", label: "My students" }}
-        actions={
-          <Button href={`/teacher/reports/new?studentId=${id}`} variant="primary">
-            Write a report
-          </Button>
-        }
-      />
+      <PageTitle title={s.name} crumb="Student List" actions={<Link href={`/teacher/reports/new?studentId=${id}`} className={btnGreen}>Write a report</Link>} />
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_20rem]">
-        <div className="space-y-6">
-          <Panel title="Upcoming classes">
-            {upcoming.length === 0 ? (
-              <p className="text-sm text-muted">None scheduled.</p>
-            ) : (
-              <ul className="divide-y divide-brand-100">
-                {upcoming.map((c) => (
-                  <li key={c.id} className="flex items-center justify-between gap-3 py-2 first:pt-0 last:pb-0">
-                    <span className="font-medium text-brand-800">{formatDateTime(c.startsAt, tz)}</span>
-                    {c.isTrial && <Badge value="trial" />}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </Panel>
-
-          <Panel title="Recent classes">
-            {past.length === 0 ? (
-              <p className="text-sm text-muted">No class history yet.</p>
-            ) : (
-              <ul className="divide-y divide-brand-100">
-                {past.map((c) => (
-                  <li key={c.id} className="flex items-center justify-between gap-3 py-2 first:pt-0 last:pb-0">
-                    <span className="text-brand-800">{formatDateTime(c.startsAt, tz)}</span>
-                    <Badge value={c.status} />
-                  </li>
-                ))}
-              </ul>
-            )}
-          </Panel>
-
-          {student.notes && (
-            <Panel title="Notes from admin">
-              <p className="whitespace-pre-line text-sm text-ink">{student.notes}</p>
-            </Panel>
-          )}
+      <TCard className="mb-6">
+        <div className="flex flex-wrap items-center gap-5">
+          <Avatar name={s.name} className="h-16 w-16 text-xl" />
+          <div className="min-w-0 flex-1">
+            <p className="font-sans text-xl font-extrabold uppercase text-navy">
+              {s.name}
+              {s.studentNo > 0 && <span className="font-semibold"> (ID:{s.studentNo})</span>}
+            </p>
+            <p className="mt-1 text-slate-500">
+              {[s.parent, s.age ? `${s.age} years old` : null, s.country, s.timezone].filter(Boolean).join(" · ")}
+            </p>
+          </div>
+          <Pill tone={s.status === "active" ? "green" : s.status === "trial" ? "amber" : "slate"}>{s.status}</Pill>
         </div>
+        {s.notes && <p className="mt-5 whitespace-pre-line rounded-2xl bg-slate-50 px-5 py-4 text-sm text-slate-600">{s.notes}</p>}
+      </TCard>
 
-        <div className="space-y-6">
-          {student.guardianName && (
-            <Panel title="Parent / guardian">
-              <p className="font-semibold text-brand-800">{student.guardianName}</p>
-              <p className="mt-1 text-sm text-muted">{[student.guardianPhone, student.guardianEmail].filter(Boolean).join(" · ")}</p>
-            </Panel>
+      <div className="grid gap-6 lg:grid-cols-2">
+        <TCard className="scroll-mt-6 lg:col-span-2">
+          <h2 id="progress" className="mb-5 scroll-mt-6 font-sans text-xl font-bold text-navy">Course progress</h2>
+          <ProgressForm
+            studentId={s.id}
+            basicTitle={s.basicCourse ?? "Basic course (set one in the admin portal)"}
+            additionalTitle={s.additionalCourse ?? "Additional course (set one in the admin portal)"}
+            values={{ basicPart: s.basicPart, basicPage: s.basicPage, tajweedStep: s.tajweedStep, additionalPart: s.additionalPart, additionalPage: s.additionalPage }}
+          />
+        </TCard>
+
+        <TCard>
+          <h2 id="schedule" className="mb-4 scroll-mt-6 font-sans text-xl font-bold text-navy">Upcoming schedule</h2>
+          {upcoming.length === 0 ? (
+            <p className="text-slate-400">Nothing scheduled.</p>
+          ) : (
+            <ul className="divide-y divide-slate-100">
+              {upcoming.map((c) => (
+                <li key={c.id} className="flex items-center justify-between gap-3 py-3">
+                  <Link href={`/teacher/classes/${c.id}`} className="font-semibold text-navy hover:underline">
+                    {formatDateShort(c.startsAt, tz)} · {formatTime12(c.startsAt, tz)}
+                  </Link>
+                  <Pill tone={c.isTrial ? "amber" : "green"}>{c.isTrial ? "Trial" : "Regular"}</Pill>
+                </li>
+              ))}
+            </ul>
           )}
-          <Panel title="Progress reports">
-            {reports.length === 0 ? (
-              <p className="text-sm text-muted">No reports yet.</p>
-            ) : (
-              <ul className="space-y-2 text-sm">
-                {reports.map((r) => (
-                  <li key={r.id} className="flex items-center justify-between gap-2">
-                    <Link href={`/teacher/reports/${r.id}`} className="font-medium text-brand-700 hover:underline">
-                      {r.month}
-                    </Link>
-                    <Badge value={r.status} />
-                  </li>
-                ))}
-              </ul>
-            )}
-          </Panel>
-        </div>
+        </TCard>
+
+        <TCard>
+          <h2 id="history" className="mb-4 scroll-mt-6 font-sans text-xl font-bold text-navy">Class history</h2>
+          {past.length === 0 ? (
+            <p className="text-slate-400">No classes yet.</p>
+          ) : (
+            <ul className="divide-y divide-slate-100">
+              {past.map((c) => (
+                <li key={c.id} className="flex items-center justify-between gap-3 py-3">
+                  <Link href={`/teacher/classes/${c.id}`} className="text-navy hover:underline">
+                    {formatDateShort(c.startsAt, tz)} · {formatTime12(c.startsAt, tz)}
+                  </Link>
+                  <StatusPill status={c.status} />
+                </li>
+              ))}
+            </ul>
+          )}
+        </TCard>
+
+        <TCard>
+          <h2 id="notes" className="mb-4 scroll-mt-6 font-sans text-xl font-bold text-navy">Lesson notes</h2>
+          {withNotes.length === 0 ? (
+            <p className="text-slate-400">Notes appear here once classes are completed.</p>
+          ) : (
+            <ul className="space-y-3">
+              {withNotes.map((c) => (
+                <li key={c.id}>
+                  <Link href={`/teacher/classes/${c.id}`} className="block rounded-2xl border border-slate-200 px-4 py-3 transition hover:border-green-400">
+                    <span className="flex items-center justify-between text-sm font-semibold text-navy">
+                      {formatDateShort(c.startsAt, tz)}
+                      {!c.lessonNotes && <span className="rounded-lg bg-rose-100 px-2 py-0.5 text-xs font-bold text-rose-600">Add notes</span>}
+                    </span>
+                    {c.lessonNotes && <span className="mt-1 line-clamp-2 block text-sm text-slate-500">{c.lessonNotes}</span>}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+        </TCard>
+
+        <TCard>
+          <h2 id="reports" className="mb-4 scroll-mt-6 font-sans text-xl font-bold text-navy">Progress reports</h2>
+          {reports.length === 0 ? (
+            <p className="text-slate-400">No reports yet.</p>
+          ) : (
+            <ul className="divide-y divide-slate-100">
+              {reports.map((r) => (
+                <li key={r.id} className="flex items-center justify-between gap-3 py-3">
+                  <Link href={`/teacher/reports/${r.id}`} className="font-semibold text-navy hover:underline">
+                    {r.month}
+                  </Link>
+                  <ReportPill status={r.status} />
+                </li>
+              ))}
+            </ul>
+          )}
+        </TCard>
       </div>
     </>
   );

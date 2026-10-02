@@ -1,14 +1,12 @@
 "use client";
 
 import { useActionState } from "react";
-import { Field, Input, Select, Textarea } from "@/components/form-fields";
-import { Button } from "@/components/ui";
+import { btnGreen, btnSoft, inputBase } from "./ui";
 import { saveReport, type ReportState } from "@/lib/teacher/actions";
 
 type Student = { id: string; name: string };
 
-const ratingOptions = ["1", "2", "3", "4", "5"];
-const ratingLabels = Object.fromEntries(ratingOptions.map((n) => [n, `${n} / 5`]));
+const label = "mb-1.5 block text-sm font-semibold text-slate-600";
 
 export function ReportForm({
   reportId,
@@ -24,65 +22,83 @@ export function ReportForm({
   const [state, action, pending] = useActionState(saveReport.bind(null, reportId), {} as ReportState);
   const e = state.errors ?? {};
   const v = { ...defaults, ...(state.values ?? {}) };
+  const isNew = reportId === "new";
 
   if (locked) {
     return (
-      <p role="status" className="rounded-xl border border-brand-200 bg-brand-50 px-4 py-3 text-sm text-brand-800">
-        This report has been reviewed by the admin and can no longer be edited.
+      <p role="status" className="rounded-2xl bg-green-50 px-5 py-4 font-medium text-green-700">
+        This report has been verified by the admin and can no longer be edited.
       </p>
     );
   }
 
+  const err = (name: string) => (e[name] ? <p className="mt-1 text-sm text-rose-600">{e[name]}</p> : null);
+
   return (
-    <form action={action} className="space-y-5" noValidate>
+    <form action={action} className="space-y-6" noValidate>
       {state.message && (
-        <p role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
-          {state.message}
-        </p>
-      )}
-      {state.ok && state.message && (
-        <p role="status" className="rounded-xl border border-brand-200 bg-brand-50 px-4 py-3 text-sm text-brand-800">
+        <p role={state.ok ? "status" : "alert"} className={`rounded-2xl px-5 py-3 text-sm font-medium ${state.ok ? "bg-green-50 text-green-700" : "bg-rose-50 text-rose-700"}`}>
           {state.message}
         </p>
       )}
 
-      <div className="grid gap-5 md:grid-cols-2">
-        <Field label="Student *" name="studentId" error={e.studentId}>
-          <Select
-            name="studentId"
-            defaultValue={v.studentId ?? ""}
-            options={students.map((s) => s.id)}
-            labels={Object.fromEntries(students.map((s) => [s.id, s.name]))}
-            placeholder="Choose a student"
-            disabled={reportId !== "new"}
-            error={e.studentId}
-          />
-        </Field>
-        <Field label="Month *" name="month" error={e.month}>
-          <Input name="month" type="month" defaultValue={v.month ?? ""} disabled={reportId !== "new"} error={e.month} />
-        </Field>
-        <Field label="Overall rating" name="rating" error={e.rating}>
-          <Select name="rating" defaultValue={v.rating ?? ""} options={ratingOptions} labels={ratingLabels} emptyLabel="No rating" error={e.rating} />
-        </Field>
+      {/* Disabled controls are not submitted, so an existing report keeps its student and month in hidden fields. */}
+      {!isNew && (
+        <>
+          <input type="hidden" name="studentId" value={v.studentId ?? ""} />
+          <input type="hidden" name="month" value={v.month ?? ""} />
+        </>
+      )}
+
+      <div className="grid gap-5 md:grid-cols-3">
+        <div>
+          <label htmlFor="studentId" className={label}>Student *</label>
+          <select id="studentId" name={isNew ? "studentId" : undefined} defaultValue={v.studentId ?? ""} disabled={!isNew} className={inputBase} aria-invalid={!!e.studentId}>
+            <option value="" disabled>Choose a student</option>
+            {students.map((s) => (
+              <option key={s.id} value={s.id}>{s.name}</option>
+            ))}
+          </select>
+          {err("studentId")}
+        </div>
+        <div>
+          <label htmlFor="month" className={label}>Month *</label>
+          <input id="month" name={isNew ? "month" : undefined} type="month" defaultValue={v.month ?? ""} disabled={!isNew} className={inputBase} aria-invalid={!!e.month} />
+          {err("month")}
+        </div>
+        <div>
+          <label htmlFor="rating" className={label}>Overall rating</label>
+          <select id="rating" name="rating" defaultValue={v.rating ?? ""} className={inputBase}>
+            <option value="">No rating</option>
+            {[1, 2, 3, 4, 5].map((n) => (
+              <option key={n} value={n}>{n} / 5</option>
+            ))}
+          </select>
+          {err("rating")}
+        </div>
       </div>
 
-      <Field label="What was covered this month *" name="covered" error={e.covered}>
-        <Textarea name="covered" rows={4} defaultValue={v.covered ?? ""} error={e.covered} />
-      </Field>
-      <Field label="Strengths" name="strengths">
-        <Textarea name="strengths" rows={3} defaultValue={v.strengths ?? ""} />
-      </Field>
-      <Field label="Areas to improve" name="improvements">
-        <Textarea name="improvements" rows={3} defaultValue={v.improvements ?? ""} />
-      </Field>
+      <div>
+        <label htmlFor="covered" className={label}>What was covered this month *</label>
+        <textarea id="covered" name="covered" rows={4} defaultValue={v.covered ?? ""} className={inputBase} aria-invalid={!!e.covered} />
+        {err("covered")}
+      </div>
+      <div>
+        <label htmlFor="strengths" className={label}>Strengths</label>
+        <textarea id="strengths" name="strengths" rows={3} defaultValue={v.strengths ?? ""} className={inputBase} />
+      </div>
+      <div>
+        <label htmlFor="improvements" className={label}>Areas to improve</label>
+        <textarea id="improvements" name="improvements" rows={3} defaultValue={v.improvements ?? ""} className={inputBase} />
+      </div>
 
-      <div className="flex flex-wrap gap-3 border-t border-brand-100 pt-5">
-        <Button type="submit" name="intent" value="draft" variant="outline" disabled={pending}>
+      <div className="flex flex-wrap gap-3 border-t border-slate-100 pt-6">
+        <button type="submit" name="intent" value="draft" disabled={pending} className={btnSoft}>
           {pending ? "Saving…" : "Save draft"}
-        </Button>
-        <Button type="submit" name="intent" value="submit" disabled={pending}>
+        </button>
+        <button type="submit" name="intent" value="submit" disabled={pending} className={btnGreen}>
           {pending ? "Submitting…" : "Submit for review"}
-        </Button>
+        </button>
       </div>
     </form>
   );

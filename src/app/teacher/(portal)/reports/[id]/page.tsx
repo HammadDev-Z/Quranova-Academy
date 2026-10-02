@@ -1,11 +1,11 @@
 import { asc, eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
-import { AdminPageHeader, Panel } from "@/components/admin/ui";
 import { ReportForm } from "@/components/teacher/report-form";
+import { PageTitle, ReportPill, TCard } from "@/components/teacher/ui";
 import { db, progressReports, students } from "@/db";
 import { requireTeacher } from "@/lib/auth/session";
 
-export const metadata = { title: "Edit report" };
+export const metadata = { title: "Progress report" };
 
 export default async function EditReportPage({ params }: { params: Promise<{ id: string }> }) {
   const me = await requireTeacher();
@@ -22,8 +22,8 @@ export default async function EditReportPage({ params }: { params: Promise<{ id:
 
   return (
     <>
-      <AdminPageHeader title="Edit progress report" back={{ href: "/teacher/reports", label: "Progress reports" }} />
-      <Panel>
+      <PageTitle title="Progress Report" crumb="Reports" actions={<ReportPill status={report.status} />} />
+      <TCard>
         <ReportForm
           reportId={id}
           students={roster}
@@ -37,7 +37,7 @@ export default async function EditReportPage({ params }: { params: Promise<{ id:
             rating: report.rating ? String(report.rating) : "",
           }}
         />
-      </Panel>
+      </TCard>
     </>
   );
 }

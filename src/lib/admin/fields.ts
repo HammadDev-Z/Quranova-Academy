@@ -59,5 +59,12 @@ export type ColumnDef = {
 
 export type FilterDef = { name: string; label: string; options: Option[] };
 
+const labelOverrides: Record<string, string> = {
+  missed_student: "Absent",
+  missed_teacher: "Teacher absent",
+  student_leave: "Student on leave",
+  teacher_leave: "Teacher on leave",
+};
+
 export const formatLabel = (value: string) =>
-  value.replace(/_/g, " ").replace(/^\w/, (c) => c.toUpperCase());
+  labelOverrides[value] ?? value.replace(/_/g, " ").replace(/^\w/, (c) => c.toUpperCase());

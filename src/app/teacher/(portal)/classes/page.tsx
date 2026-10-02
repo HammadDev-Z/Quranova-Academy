@@ -1,136 +1,276 @@
-import { and, asc, eq, gte, lt } from "drizzle-orm";
+import { and, asc, eq, gte, inArray, lt } from "drizzle-orm";
 import Link from "next/link";
-import { AdminPageHeader, Badge, EmptyState, Flash, linkButtonOutline } from "@/components/admin/ui";
-import { classSessions, courses, db, students } from "@/db";
-import { addDays, dayKey, dayRange, formatDay, formatTimeOnly, startOfWeek, todayKey } from "@/lib/admin/time";
+import { classReschedules, classSessions, courses, db, guardians, students } from "@/db";
+import { Icon } from "@/components/teacher/icons";
+import { PageTitle, Pill, StatusPill, TCard, btnGreen, btnSoft, btnYellow } from "@/components/teacher/ui";
+import { addDays, dayKey, dayRange, formatDateShort, formatTime12, todayKey } from "@/lib/admin/time";
 import { requireTeacher } from "@/lib/auth/session";
-import { getRawSettings } from "@/lib/settings";
+import { MAX_RESCHEDULES, MIN_NOTICE_MINUTES, RECOVERY_STATUSES } from "@/lib/teacher/constants";
 import { markClassStatus } from "@/lib/teacher/actions";
 
-export const metadata = { title: "My classes" };
+export const metadata = { title: "Daily Classes" };
 
 type Props = { searchParams: Promise<Record<string, string | undefined>> };
 
-export default async function TeacherClassesPage({ searchParams }: Props) {
+const DAY_COUNTS = [7, 14, 30];
+
+export default async function DailyClassesPage({ searchParams }: Props) {
   const me = await requireTeacher();
   const sp = await searchParams;
-  const { adminTimezone: tz } = await getRawSettings();
+  const tz = me.timezone;
 
   const today = todayKey(tz);
-  const anchor = /^\d{4}-\d{2}-\d{2}$/.test(sp.week ?? "") ? sp.week! : today;
-  const weekStartKey = startOfWeek(anchor);
-  const [from, to] = dayRange(weekStartKey, addDays(weekStartKey, 7), tz);
+  const days = DAY_COUNTS.includes(Number(sp.days)) ? Number(sp.days) : 7;
+  const [dayStart] = dayRange(today, addDays(today, 1), tz);
+  const [pastFrom] = dayRange(addDays(today, -7), today, tz);
+  const [, rangeEnd] = dayRange(today, addDays(today, days), tz);
 
   const rows = await db
     .select({
       id: classSessions.id,
       startsAt: classSessions.startsAt,
-      durationMin: classSessions.durationMin,
       status: classSessions.status,
       isTrial: classSessions.isTrial,
-      meetingUrl: classSessions.meetingUrl,
-      student: students.name,
+      rescheduleCount: classSessions.rescheduleCount,
+      rescheduleDeadline: classSessions.rescheduleDeadline,
+      studentId: students.id,
+      studentName: students.name,
+      studentNo: students.studentNo,
+      studentTz: students.timezone,
+      parent: guardians.name,
       course: courses.title,
     })
     .from(classSessions)
     .innerJoin(students, eq(students.id, classSessions.studentId))
+    .leftJoin(guardians, eq(guardians.id, students.guardianId))
     .leftJoin(courses, eq(courses.id, classSessions.courseId))
-    .where(and(eq(classSessions.teacherId, me.teacherId), gte(classSessions.startsAt, from), lt(classSessions.startsAt, to)))
+    .where(and(eq(classSessions.teacherId, me.teacherId), gte(classSessions.startsAt, pastFrom), lt(classSessions.startsAt, rangeEnd)))
     .orderBy(asc(classSessions.startsAt));
 
-  const days = Array.from({ length: 7 }, (_, i) => addDays(weekStartKey, i));
-  const byDay = new Map<string, typeof rows>(days.map((d) => [d, []]));
-  for (const r of rows) byDay.get(dayKey(r.startsAt, tz))?.push(r);
+  const swapped = rows.length
+    ? new Set(
+        (
+          await db
+            .select({ classId: classReschedules.classId })
+            .from(classReschedules)
+            .where(and(eq(classReschedules.kind, "swap"), inArray(classReschedules.classId, rows.map((r) => r.id))))
+        ).map((r) => r.classId),
+      )
+    : new Set<string>();
 
-  const link = (over: Record<string, string>) => {
-    const p = new URLSearchParams({ week: weekStartKey, ...over });
-    return `/teacher/classes?${p.toString()}`;
+  const needsMarking = rows.filter((r) => r.startsAt < dayStart && r.status === "scheduled");
+  const upcoming = rows.filter((r) => r.startsAt >= dayStart);
+
+  const groups = new Map<string, typeof rows>();
+  for (const r of upcoming) {
+    const k = dayKey(r.startsAt, tz);
+    groups.set(k, [...(groups.get(k) ?? []), r]);
+  }
+
+  const groupLabel = (key: string) => {
+    const date = dayRange(key, addDays(key, 1), tz)[0];
+    const prefix = key === today ? "Today" : key === addDays(today, 1) ? "Tomorrow" : new Intl.DateTimeFormat("en-GB", { timeZone: tz, weekday: "short" }).format(date);
+    return `${prefix} - ${formatDateShort(date, tz)}`;
   };
-  const fromKey = (key: string) => dayRange(key, addDays(key, 1), tz)[0];
+
+  type Row = (typeof rows)[number];
+  const nowMs = new Date().getTime();
+
+  const renderRow = (c: Row) => {
+    const started = c.startsAt.getTime() <= nowMs;
+    const isRecovery = (RECOVERY_STATUSES as readonly string[]).includes(c.status);
+    const eligible = isRecovery && c.rescheduleCount < MAX_RESCHEDULES && (c.rescheduleDeadline ? c.rescheduleDeadline.getTime() > nowMs : true);
+    const canMove = c.status === "scheduled" && c.startsAt.getTime() > nowMs + MIN_NOTICE_MINUTES * 60000;
+    const studentLocal = c.studentTz && c.studentTz !== tz ? formatTime12(c.startsAt, c.studentTz) : null;
+
+    return (
+      <tr key={c.id} className="border-t border-slate-100 align-middle">
+        <td className="relative min-w-[15rem] py-4 pl-5 pr-3">
+          <span className="absolute inset-y-3 left-0 w-1 rounded-full bg-blue-500" aria-hidden />
+          <Link href={`/teacher/students/${c.studentId}`} className="font-sans text-[15px] font-bold uppercase text-navy hover:underline">
+            {c.studentName}
+            {c.studentNo > 0 && <span className="font-semibold"> (ID:{c.studentNo})</span>}
+          </Link>
+          {c.parent && (
+            <p className="mt-1 flex items-center gap-2 text-sm text-slate-500">
+              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-amber-200 text-amber-800" aria-hidden>
+                <Icon name="user" className="h-3 w-3" />
+              </span>
+              {c.parent}
+            </p>
+          )}
+        </td>
+        <td className="whitespace-nowrap px-3 py-4 text-center">
+          <Link href={`/teacher/classes/${c.id}`} className="text-lg font-bold text-navy hover:underline" title="Lesson notes">
+            {formatTime12(c.startsAt, tz)}
+          </Link>
+          {studentLocal && <p className="text-xs text-slate-400">Student: {studentLocal}</p>}
+        </td>
+        <td className="px-3 py-4 text-center">
+          {c.course ? <span className="inline-block whitespace-nowrap rounded-xl bg-green-500 px-5 py-2.5 text-sm font-bold text-white">{c.course}</span> : <span className="text-slate-300">—</span>}
+        </td>
+        <td className="px-3 py-4">
+          <div className="flex items-center justify-center gap-2">
+            <span className="flex h-11 w-14 items-center justify-center rounded-xl bg-slate-100 text-xs font-semibold text-slate-400">
+              {swapped.has(c.id) ? "Swapped" : "—"}
+            </span>
+            {canMove ? (
+              <Link
+                href={`/teacher/classes/${c.id}/swap`}
+                title="Swap with another class"
+                aria-label={`Swap ${c.studentName}'s class with another class`}
+                className="flex h-11 w-11 items-center justify-center rounded-xl bg-green-100 text-green-600 transition hover:bg-green-200"
+              >
+                <Icon name="calendar-clock" className="h-5 w-5" />
+              </Link>
+            ) : (
+              <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-slate-50 text-slate-300" aria-hidden>
+                <Icon name="calendar-clock" className="h-5 w-5" />
+              </span>
+            )}
+          </div>
+        </td>
+        <td className="px-3 py-4">
+          <div className="flex items-center justify-center gap-1.5 whitespace-nowrap">
+            <Pill tone={c.isTrial ? "amber" : "green"}>{c.isTrial ? "Trial" : "Regular"}</Pill>
+            <StatusPill status={c.status} />
+          </div>
+        </td>
+        <td className="py-4 pl-3 pr-5">
+          <div className="flex items-center justify-end gap-2">
+            {c.status === "scheduled" && (
+              <>
+                <form action={markClassStatus.bind(null, c.id, "student_leave")}>
+                  <button type="submit" className={btnSoft}>
+                    Student Leave
+                  </button>
+                </form>
+                <details className="relative">
+                  <summary
+                    className="flex h-11 w-11 cursor-pointer list-none items-center justify-center rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-100 [&::-webkit-details-marker]:hidden"
+                    aria-label="More actions"
+                  >
+                    <Icon name="more" className="h-5 w-5" />
+                  </summary>
+                  <div className="absolute right-0 top-12 z-20 w-56 rounded-2xl border border-slate-200 bg-white p-2 shadow-xl">
+                    {started && (
+                      <form action={markClassStatus.bind(null, c.id, "completed")}>
+                        <button type="submit" className="w-full rounded-xl px-3 py-2 text-left text-sm font-semibold text-green-700 hover:bg-green-50">
+                          Mark as done
+                        </button>
+                      </form>
+                    )}
+                    <form action={markClassStatus.bind(null, c.id, "missed_student")}>
+                      <button type="submit" className="w-full rounded-xl px-3 py-2 text-left text-sm font-semibold text-rose-600 hover:bg-rose-50">
+                        Student absent
+                      </button>
+                    </form>
+                    <form action={markClassStatus.bind(null, c.id, "teacher_leave")}>
+                      <button type="submit" className="w-full rounded-xl px-3 py-2 text-left text-sm font-semibold text-purple-700 hover:bg-purple-50">
+                        I need leave
+                      </button>
+                    </form>
+                    <Link href={`/teacher/classes/${c.id}`} className="block rounded-xl px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">
+                      Lesson notes
+                    </Link>
+                  </div>
+                </details>
+              </>
+            )}
+            {isRecovery && eligible && (
+              <Link href={`/teacher/reschedule/${c.id}`} className={btnYellow}>
+                Reschedule
+              </Link>
+            )}
+            {(c.status === "completed" || (isRecovery && !eligible)) && (
+              <Link href={`/teacher/classes/${c.id}`} className="text-sm font-semibold text-green-600 hover:underline">
+                {c.status === "completed" ? "Notes" : "Details"}
+              </Link>
+            )}
+          </div>
+        </td>
+      </tr>
+    );
+  };
+
+  const groupHeader = (label: string, tone = "text-green-600") => (
+    <tr key={`h-${label}`}>
+      <td colSpan={6} className="bg-slate-50 px-5 py-3">
+        <span className={`flex items-center gap-2 text-lg font-semibold ${tone}`}>
+          <Icon name="calendar" className="h-5 w-5 text-slate-400" />
+          {label}
+        </span>
+      </td>
+    </tr>
+  );
 
   return (
     <>
-      <AdminPageHeader title="My classes" description={`Times are shown in ${tz}.`} />
-      <Flash saved={sp.saved} />
+      <PageTitle
+        title="Daily Classes"
+        actions={
+          <Link href="/teacher/classes" prefetch={false} className={btnGreen}>
+            <Icon name="refresh" className="h-5 w-5" /> Refresh
+          </Link>
+        }
+      />
 
-      <div className="mb-5 flex flex-wrap items-center gap-2">
-        <Link href={link({ week: addDays(weekStartKey, -7) })} className={linkButtonOutline} aria-label="Previous week">
-          ←
-        </Link>
-        <Link href={link({ week: startOfWeek(today) })} className={linkButtonOutline}>
-          This week
-        </Link>
-        <Link href={link({ week: addDays(weekStartKey, 7) })} className={linkButtonOutline} aria-label="Next week">
-          →
-        </Link>
-        <span className="ml-2 text-sm font-semibold text-brand-800">
-          {formatDay(from, tz).replace(/^\w+ /, "")} – {formatDay(new Date(to.getTime() - 1), tz).replace(/^\w+ /, "")}
-        </span>
-      </div>
+      {sp.swapped && <p role="status" className="mb-5 rounded-2xl bg-green-50 px-5 py-3 font-medium text-green-700">Classes swapped.</p>}
 
-      {rows.length === 0 ? (
-        <EmptyState title="No classes this week" />
-      ) : (
-        <div className="space-y-5">
-          {days.map((d) => {
-            const items = byDay.get(d) ?? [];
-            if (items.length === 0) return null;
-            const when = fromKey(d);
-            return (
-              <section key={d}>
-                <h2 className={`mb-2 font-sans text-sm font-semibold uppercase tracking-wide ${d === today ? "text-gold-600" : "text-brand-800"}`}>
-                  {formatDay(when, tz)}
-                  {d === today && " · Today"}
-                </h2>
-                <ul className="divide-y divide-brand-100 overflow-hidden rounded-2xl border border-brand-100 bg-white shadow-sm">
-                  {items.map((c) => (
-                    <li key={c.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
-                      <div className="flex min-w-0 items-center gap-4">
-                        <p className="w-28 flex-none font-serif text-lg font-bold text-brand-700">
-                          {formatTimeOnly(c.startsAt, tz)}
-                          <span className="block font-sans text-xs font-normal text-muted">{c.durationMin} min</span>
-                        </p>
-                        <div className="min-w-0">
-                          <p className="truncate font-semibold text-brand-800">{c.student}</p>
-                          <p className="truncate text-xs text-muted">{c.course ?? "No course set"}</p>
-                        </div>
-                      </div>
-                      <div className="flex flex-wrap items-center gap-2">
-                        {c.isTrial && <Badge value="trial" />}
-                        <Badge value={c.status} />
-                        {c.meetingUrl && (
-                          <a href={c.meetingUrl} target="_blank" rel="noopener noreferrer" className="text-sm font-semibold text-brand-600 hover:underline">
-                            Join
-                          </a>
-                        )}
-                        {c.status === "scheduled" && (
-                          <>
-                            <form action={markClassStatus.bind(null, c.id, "completed")}>
-                              <button type="submit" className="rounded-lg bg-green-100 px-2.5 py-1 text-xs font-semibold text-green-800 hover:bg-green-200">
-                                Done
-                              </button>
-                            </form>
-                            <form action={markClassStatus.bind(null, c.id, "missed_student")}>
-                              <button type="submit" className="rounded-lg bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-800 hover:bg-amber-200">
-                                Student didn&apos;t attend
-                              </button>
-                            </form>
-                            <form action={markClassStatus.bind(null, c.id, "missed_teacher")}>
-                              <button type="submit" className="rounded-lg bg-red-100 px-2.5 py-1 text-xs font-semibold text-red-800 hover:bg-red-200">
-                                I need leave
-                              </button>
-                            </form>
-                          </>
-                        )}
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            );
-          })}
+      <TCard className="overflow-hidden p-0">
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[1000px] text-left">
+            <thead>
+              <tr className="text-[15px] font-bold text-navy">
+                <th scope="col" className="px-5 py-5">Student/Parent</th>
+                <th scope="col" className="px-3 py-5 text-center">Time</th>
+                <th scope="col" className="px-3 py-5 text-center">Course</th>
+                <th scope="col" className="px-3 py-5 text-center">Swap</th>
+                <th scope="col" className="px-3 py-5 text-center">Status</th>
+                <th scope="col" className="px-5 py-5 text-right">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {needsMarking.length > 0 && (
+                <>
+                  {groupHeader("Earlier - needs marking", "text-rose-600")}
+                  {needsMarking.map(renderRow)}
+                </>
+              )}
+              {[...groups.entries()].map(([key, items]) => (
+                <FragmentRows key={key} header={groupHeader(groupLabel(key))}>
+                  {items.map(renderRow)}
+                </FragmentRows>
+              ))}
+              {needsMarking.length === 0 && groups.size === 0 && (
+                <tr>
+                  <td colSpan={6} className="px-5 py-14 text-center text-slate-400">
+                    No classes in the next {days} days.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </div>
-      )}
+      </TCard>
+
+      <p className="mt-4 flex flex-wrap items-center gap-2 text-sm text-slate-500">
+        Showing the next {days} days. Times are in your time zone ({tz}).
+        {DAY_COUNTS.filter((d) => d !== days).map((d) => (
+          <Link key={d} href={`/teacher/classes?days=${d}`} className="font-semibold text-green-600 hover:underline">
+            Show {d} days
+          </Link>
+        ))}
+      </p>
+    </>
+  );
+}
+
+function FragmentRows({ header, children }: { header: React.ReactNode; children: React.ReactNode }) {
+  return (
+    <>
+      {header}
+      {children}
     </>
   );
 }

@@ -18,6 +18,13 @@
   --color-gold-500: #c9a24b;
   --color-gold-600: #a8832f;
 
+  /* Teacher portal */
+  --color-sage-50: #f3f8ee;
+  --color-sage-100: #e3edd6;
+  --color-sage-200: #cfe0bd;
+  --color-sage-300: #b8d1a2;
+  --color-navy: #0f1b3d;
+
   --color-cream: #fbf8f1;
   --color-ink: #1c2a24;
   --color-muted: #5b6a63;
@@ -42,11 +49,14 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-h1,
-h2,
-h3 {
-  font-family: var(--font-serif);
-  letter-spacing: -0.01em;
+/* In the base layer so utilities like font-sans can override it per heading. */
+@layer base {
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-serif);
+    letter-spacing: -0.01em;
+  }
 }
 
 :focus-visible {

@@ -7,6 +7,8 @@ import { classSessions, classStatuses, courses, db, guardians, invoices, leadSta
 import { requireAdmin } from "@/lib/auth/session";
 import { getRawSettings } from "@/lib/settings";
 import { logActivity } from "./log";
+import { nextStudentNo } from "./student-no";
+import { RECOVERY_STATUSES, RESCHEDULE_WINDOW_DAYS } from "@/lib/teacher/constants";
 import { paymentMethods } from "./resources";
 import { addDays, fromLocalInput, todayKey } from "./time";
 
@@ -46,6 +48,7 @@ export async function convertLeadToStudent(leadId: string) {
   const [student] = await db
     .insert(students)
     .values({
+      studentNo: await nextStudentNo(),
       name: lead.studentName || lead.parentName || "New student",
       age: lead.studentAge,
       guardianId,
@@ -74,7 +77,11 @@ export async function setClassStatus(classId: string, status: string) {
   if (!(classStatuses as readonly string[]).includes(status)) return;
   const [row] = await db.select().from(classSessions).where(eq(classSessions.id, classId)).limit(1);
   if (!row) return;
-  await db.update(classSessions).set({ status: status as (typeof classStatuses)[number] }).where(eq(classSessions.id, classId));
+  const patch: Partial<typeof classSessions.$inferInsert> = { status: status as (typeof classStatuses)[number] };
+  if (RECOVERY_STATUSES.includes(status as (typeof RECOVERY_STATUSES)[number]) && !row.rescheduleDeadline) {
+    patch.rescheduleDeadline = new Date(row.startsAt.getTime() + RESCHEDULE_WINDOW_DAYS * 24 * 60 * 60 * 1000);
+  }
+  await db.update(classSessions).set(patch).where(eq(classSessions.id, classId));
   await logActivity(user, "updated", "class", classId, `Class marked ${status.replace(/_/g, " ")}`);
   refresh();
 }

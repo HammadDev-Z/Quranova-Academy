@@ -62,7 +62,7 @@ export async function requireAdmin(): Promise<CurrentUser> {
   return user;
 }
 
-export type CurrentTeacher = CurrentUser & { teacherId: string };
+export type CurrentTeacher = CurrentUser & { teacherId: string; timezone: string };
 
 /** Same idea as requireAdmin(), for the teacher portal. Resolves the linked teacher record too. */
 export async function requireTeacher(): Promise<CurrentTeacher> {
@@ -71,11 +71,11 @@ export async function requireTeacher(): Promise<CurrentTeacher> {
   if (user.role !== "teacher") redirect("/teacher/login?error=forbidden");
 
   const [teacher] = await db
-    .select({ id: teachers.id, active: teachers.active })
+    .select({ id: teachers.id, active: teachers.active, timezone: teachers.timezone })
     .from(teachers)
     .where(eq(teachers.userId, user.id))
     .limit(1);
   if (!teacher || !teacher.active) redirect("/teacher/login?error=forbidden");
 
-  return { ...user, teacherId: teacher.id };
+  return { ...user, teacherId: teacher.id, timezone: teacher.timezone };
 }

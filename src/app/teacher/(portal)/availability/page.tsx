@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
-import { AdminPageHeader, Panel } from "@/components/admin/ui";
-import { AvailabilityForm } from "@/components/teacher/availability-form";
 import { availabilitySlots, db } from "@/db";
+import { AvailabilityForm } from "@/components/teacher/forms";
+import { PageTitle, TCard } from "@/components/teacher/ui";
 import { requireTeacher } from "@/lib/auth/session";
 
 export const metadata = { title: "My availability" };
@@ -13,10 +13,10 @@ export default async function AvailabilityPage() {
 
   return (
     <>
-      <AdminPageHeader title="My availability" description="Tell the admin which days and times you can teach, so new students are scheduled at times that work for you." />
-      <Panel>
+      <PageTitle title="My Availability" crumb="Dashboards" subtitle={`Tell the academy which days and hours you can teach. Times are in your time zone (${me.timezone}).`} />
+      <TCard>
         <AvailabilityForm slots={slots} />
-      </Panel>
+      </TCard>
     </>
   );
 }

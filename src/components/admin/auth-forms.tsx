@@ -3,7 +3,7 @@
 import { useActionState } from "react";
 import { Field, Input } from "@/components/form-fields";
 import { Button } from "@/components/ui";
-import { changeOwnPassword, createAdminUser, createTeacherLogin, login, loginTeacher, resetUserPassword, type AuthState } from "@/lib/auth/actions";
+import { changeOwnPassword, createAdminUser, createTeacherLogin, login, resetUserPassword, type AuthState } from "@/lib/auth/actions";
 
 const initial: AuthState = {};
 
@@ -25,24 +25,6 @@ function Notice({ state }: { state: AuthState }) {
 
 export function LoginForm() {
   const [state, action, pending] = useActionState(login, initial);
-  return (
-    <form action={action} className="space-y-5" noValidate>
-      <Notice state={state} />
-      <Field label="Email" name="email">
-        <Input name="email" type="email" autoComplete="username" defaultValue={state.email} required />
-      </Field>
-      <Field label="Password" name="password">
-        <Input name="password" type="password" autoComplete="current-password" required />
-      </Field>
-      <Button type="submit" size="lg" disabled={pending} className="w-full">
-        {pending ? "Signing in…" : "Sign in"}
-      </Button>
-    </form>
-  );
-}
-
-export function TeacherLoginForm() {
-  const [state, action, pending] = useActionState(loginTeacher, initial);
   return (
     <form action={action} className="space-y-5" noValidate>
       <Notice state={state} />

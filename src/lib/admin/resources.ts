@@ -24,6 +24,7 @@ import {
 import type { ColumnDef, FieldDef, FilterDef, Option } from "./fields";
 import { formatLabel } from "./fields";
 import { slugify } from "./format";
+import { nextStudentNo } from "./student-no";
 import { todayKey } from "./time";
 
 export type SaveContext = { existing?: Record<string, unknown>; tz: string };
@@ -167,8 +168,15 @@ export const resources: Record<string, Resource> = {
       { name: "courseId", label: "Main course", type: "select", optionsFrom: "courses", half: true },
       { name: "teacherId", label: "Teacher", type: "select", optionsFrom: "teachers", half: true },
       { name: "packageId", label: "Package", type: "select", optionsFrom: "packages", half: true },
+      { name: "basicPart", label: "Main course: current part", type: "text", placeholder: "e.g. Para 01", half: true },
+      { name: "basicPage", label: "Main course: current page", type: "number", half: true },
+      { name: "tajweedStep", label: "Tajweed step", type: "number", half: true },
+      { name: "additionalCourseId", label: "Additional course", type: "select", optionsFrom: "courses", half: true },
+      { name: "additionalPart", label: "Additional course: current part", type: "text", half: true },
+      { name: "additionalPage", label: "Additional course: current page", type: "number", half: true },
       { name: "notes", label: "Notes", type: "textarea" },
     ],
+    beforeSave: async (v, ctx) => (ctx.existing ? v : { ...v, studentNo: await nextStudentNo() }),
     beforeDelete: async (id) => {
       await db.delete(classSessions).where(eq(classSessions.studentId, id));
       await db.delete(progressReports).where(eq(progressReports.studentId, id));
@@ -278,6 +286,7 @@ export const resources: Record<string, Resource> = {
     beforeSave: (v) => ({ ...v, slug: slugify(String(v.slug || v.title)) }),
     beforeDelete: async (id) => {
       await db.update(students).set({ courseId: null }).where(eq(students.courseId, id));
+      await db.update(students).set({ additionalCourseId: null }).where(eq(students.additionalCourseId, id));
       await db.update(classSessions).set({ courseId: null }).where(eq(classSessions.courseId, id));
     },
   },

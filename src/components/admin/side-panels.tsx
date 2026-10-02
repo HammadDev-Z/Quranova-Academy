@@ -376,7 +376,7 @@ async function ClassPanel({ row, tz }: { row: Row; tz: string }) {
           </p>
         )}
         <div className="mt-3 flex flex-wrap gap-2">
-          {(["completed", "missed_student", "missed_teacher", "cancelled", "scheduled"] as const).map((st) => (
+          {(["completed", "missed_student", "missed_teacher", "student_leave", "teacher_leave", "cancelled", "scheduled"] as const).map((st) => (
             <form key={st} action={setClassStatus.bind(null, row.id, st)}>
               <button
                 type="submit"

@@ -118,3 +118,52 @@ export function formatDateOnly(value: string): string {
 export function dayRange(startKey: string, endKeyExclusive: string, tz: string): [Date, Date] {
   return [fromLocalInput(`${startKey}T00:00`, tz)!, fromLocalInput(`${endKeyExclusive}T00:00`, tz)!];
 }
+
+/** "10:30 PM" */
+export function formatTime12(date: Date, tz: string): string {
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone: safeZone(tz),
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  }).format(date);
+}
+
+/** "02 Oct 2026" */
+export function formatDateShort(date: Date, tz: string): string {
+  return new Intl.DateTimeFormat("en-GB", {
+    timeZone: safeZone(tz),
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  }).format(date);
+}
+
+/** "Sat" */
+export function formatWeekdayShort(date: Date, tz: string): string {
+  return new Intl.DateTimeFormat("en-GB", { timeZone: safeZone(tz), weekday: "short" }).format(date);
+}
+
+/** Hour (0-23) of a Date in tz. */
+export function hourOf(date: Date, tz: string): number {
+  return Number(parts(date.getTime(), safeZone(tz)).hour);
+}
+
+/** Day of week in tz, 0 = Monday ... 6 = Sunday, and minutes since local midnight. */
+export function weekdayAndMinutes(date: Date, tz: string): { weekday: number; minutes: number } {
+  const zone = safeZone(tz);
+  const p = parts(date.getTime(), zone);
+  const key = `${p.year}-${p.month}-${p.day}`;
+  const [y, m, d] = key.split("-").map(Number);
+  const weekday = (new Date(Date.UTC(y, m - 1, d)).getUTCDay() + 6) % 7;
+  return { weekday, minutes: Number(p.hour) * 60 + Number(p.minute) };
+}
+
+/** Morning / Afternoon / Evening / Night label for a class start time. */
+export function shiftOf(date: Date, tz: string): "Morning" | "Afternoon" | "Evening" | "Night" {
+  const h = hourOf(date, tz);
+  if (h >= 5 && h < 12) return "Morning";
+  if (h >= 12 && h < 17) return "Afternoon";
+  if (h >= 17) return "Evening";
+  return "Night";
+}

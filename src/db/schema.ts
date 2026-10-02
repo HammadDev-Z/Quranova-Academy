@@ -151,6 +151,8 @@ export const studentStatuses = ["trial", "active", "paused", "completed", "left"
 
 export const students = sqliteTable("students", {
   id: id(),
+  // Short human-friendly number shown in lists, e.g. "ID:1042". 0 = not assigned.
+  studentNo: integer("student_no").notNull().default(0),
   userId: text("user_id").references(() => users.id, { onDelete: "set null" }),
   guardianId: text("guardian_id").references(() => guardians.id, { onDelete: "set null" }),
   name: text("name").notNull(),
@@ -162,6 +164,13 @@ export const students = sqliteTable("students", {
   courseId: text("course_id").references(() => courses.id, { onDelete: "set null" }),
   teacherId: text("teacher_id").references(() => teachers.id, { onDelete: "set null" }),
   packageId: text("package_id").references(() => packages.id, { onDelete: "set null" }),
+  // Progress through the main ("basic") course and an optional additional course.
+  basicPart: text("basic_part").notNull().default(""), // e.g. "Para 01"
+  basicPage: integer("basic_page").notNull().default(0),
+  tajweedStep: integer("tajweed_step").notNull().default(0),
+  additionalCourseId: text("additional_course_id").references(() => courses.id, { onDelete: "set null" }),
+  additionalPart: text("additional_part").notNull().default(""),
+  additionalPage: integer("additional_page").notNull().default(0),
   startDate: text("start_date").notNull().default(""),
   notes: text("notes").notNull().default(""),
   createdAt: createdAt(),
@@ -195,7 +204,15 @@ export const leads = sqliteTable("leads", {
 
 /* ───────── Teaching ───────── */
 
-export const classStatuses = ["scheduled", "completed", "missed_student", "missed_teacher", "cancelled"] as const;
+export const classStatuses = [
+  "scheduled",
+  "completed",
+  "missed_student", // student absent without notice
+  "missed_teacher", // teacher absent without notice
+  "student_leave", // student told us in advance
+  "teacher_leave", // teacher told us in advance
+  "cancelled",
+] as const;
 
 export const classSessions = sqliteTable("class_sessions", {
   id: id(),
@@ -220,6 +237,7 @@ export const classSessions = sqliteTable("class_sessions", {
 });
 
 export const rescheduleRequestedBy = ["teacher", "admin"] as const;
+export const rescheduleKinds = ["recovery", "advance", "swap"] as const;
 
 /** History of every time a class was moved, kept even after the class itself changes. */
 export const classReschedules = sqliteTable("class_reschedules", {
@@ -230,6 +248,7 @@ export const classReschedules = sqliteTable("class_reschedules", {
   oldStartsAt: integer("old_starts_at", { mode: "timestamp_ms" }).notNull(),
   newStartsAt: integer("new_starts_at", { mode: "timestamp_ms" }).notNull(),
   requestedBy: text("requested_by", { enum: rescheduleRequestedBy }).notNull(),
+  kind: text("kind", { enum: rescheduleKinds }).notNull().default("recovery"),
   note: text("note").notNull().default(""),
   createdAt: createdAt(),
 });

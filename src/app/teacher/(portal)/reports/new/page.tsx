@@ -1,17 +1,15 @@
 import { asc, eq } from "drizzle-orm";
-import { AdminPageHeader, Panel } from "@/components/admin/ui";
 import { ReportForm } from "@/components/teacher/report-form";
+import { PageTitle, TCard } from "@/components/teacher/ui";
 import { db, students } from "@/db";
-import { requireTeacher } from "@/lib/auth/session";
 import { todayKey } from "@/lib/admin/time";
-import { getRawSettings } from "@/lib/settings";
+import { requireTeacher } from "@/lib/auth/session";
 
 export const metadata = { title: "New report" };
 
-export default async function NewReportPage({ searchParams }: { searchParams: Promise<{ studentId?: string }> }) {
+export default async function NewReportPage({ searchParams }: { searchParams: Promise<{ studentId?: string; month?: string }> }) {
   const me = await requireTeacher();
-  const { studentId } = await searchParams;
-  const { adminTimezone: tz } = await getRawSettings();
+  const sp = await searchParams;
 
   const roster = await db
     .select({ id: students.id, name: students.name })
@@ -19,17 +17,14 @@ export default async function NewReportPage({ searchParams }: { searchParams: Pr
     .where(eq(students.teacherId, me.teacherId))
     .orderBy(asc(students.name));
 
+  const month = /^\d{4}-(0[1-9]|1[0-2])$/.test(sp.month ?? "") ? sp.month! : todayKey(me.timezone).slice(0, 7);
+
   return (
     <>
-      <AdminPageHeader title="Write a progress report" back={{ href: "/teacher/reports", label: "Progress reports" }} />
-      <Panel>
-        <ReportForm
-          reportId="new"
-          students={roster}
-          locked={false}
-          defaults={{ studentId: studentId ?? "", month: todayKey(tz).slice(0, 7) }}
-        />
-      </Panel>
+      <PageTitle title="Write Progress Report" crumb="Reports" />
+      <TCard>
+        <ReportForm reportId="new" students={roster} locked={false} defaults={{ studentId: sp.studentId ?? "", month }} />
+      </TCard>
     </>
   );
 }

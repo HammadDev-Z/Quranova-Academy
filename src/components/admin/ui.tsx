@@ -91,6 +91,8 @@ const badgeTone: Record<string, string> = {
   scheduled: "bg-blue-100 text-blue-800",
   missed_student: "bg-red-100 text-red-800",
   missed_teacher: "bg-red-100 text-red-800",
+  student_leave: "bg-purple-100 text-purple-800",
+  teacher_leave: "bg-purple-100 text-purple-800",
   cancelled: "bg-gray-200 text-gray-700",
   // invoices
   unpaid: "bg-amber-100 text-amber-800",

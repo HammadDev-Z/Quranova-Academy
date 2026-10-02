@@ -1,5 +1,5 @@
-import { ChangePasswordForm } from "@/components/admin/auth-forms";
-import { AdminPageHeader, Panel } from "@/components/admin/ui";
+import { TeacherPasswordForm } from "@/components/teacher/forms";
+import { PageTitle, TCard } from "@/components/teacher/ui";
 import { requireTeacher } from "@/lib/auth/session";
 
 export const metadata = { title: "My account" };
@@ -8,10 +8,11 @@ export default async function TeacherAccountPage() {
   const me = await requireTeacher();
   return (
     <>
-      <AdminPageHeader title="My account" description={`Signed in as ${me.name} (${me.email})`} />
-      <Panel title="Change password">
-        <ChangePasswordForm />
-      </Panel>
+      <PageTitle title="My Account" subtitle={`Signed in as ${me.name} (${me.email})`} />
+      <TCard>
+        <h2 className="mb-5 font-sans text-xl font-bold text-navy">Change password</h2>
+        <TeacherPasswordForm />
+      </TCard>
     </>
   );
 }
