@@ -23,7 +23,7 @@ const variants = {
 
 export function Button({ href, variant = "primary", size = "md", className, children, ...rest }: ButtonProps) {
   const classes = cn(
-    "inline-flex items-center justify-center gap-2 rounded-full font-semibold transition-colors disabled:opacity-60 disabled:cursor-not-allowed",
+    "inline-flex items-center justify-center gap-2 rounded-full font-semibold transition duration-200 hover:-translate-y-px active:translate-y-0 active:scale-[0.97] disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:translate-y-0",
     size === "lg" ? "px-7 py-3.5 text-base" : "px-5 py-2.5 text-sm",
     variants[variant],
     className,
@@ -88,7 +88,7 @@ export function SectionHeading({
   invert?: boolean;
 }) {
   return (
-    <div className={cn("mb-10 max-w-2xl", align === "center" && "mx-auto text-center")}>
+    <div className={cn("reveal mb-10 max-w-2xl", align === "center" && "mx-auto text-center")}>
       {eyebrow && (
         <p className={cn("mb-2 text-sm font-semibold uppercase tracking-widest", invert ? "text-gold-300" : "text-gold-600")}>
           {eyebrow}
@@ -118,7 +118,7 @@ export function PageHero({ title, text, arabic }: { title: string; text?: string
 
 export function Card({ className, children }: { className?: string; children: ReactNode }) {
   return (
-    <div className={cn("rounded-2xl border border-brand-100 bg-white p-6 shadow-sm", className)}>{children}</div>
+    <div className={cn("reveal rounded-2xl border border-brand-100 bg-white p-6 shadow-sm transition duration-300 hover:-translate-y-0.5 hover:shadow-md", className)}>{children}</div>
   );
 }
 

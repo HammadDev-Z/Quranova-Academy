@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { cn } from "./ui";
 
 const control =
-  "w-full rounded-xl border bg-white px-3.5 py-2.5 text-ink placeholder:text-muted/70 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-200";
+  "w-full rounded-xl border bg-white px-3.5 py-2.5 transition duration-200 text-ink placeholder:text-muted/70 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-200";
 
 export function Field({
   label,
@@ -28,7 +28,7 @@ export function Field({
       {children}
       {hint && !error && <p className="mt-1 text-xs text-muted">{hint}</p>}
       {error && (
-        <p id={`${name}-error`} role="alert" className="mt-1 text-sm text-red-700">
+        <p id={`${name}-error`} role="alert" className="fade-in mt-1 text-sm text-red-700">
           {error}
         </p>
       )}

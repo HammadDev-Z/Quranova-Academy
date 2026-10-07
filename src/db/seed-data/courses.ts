@@ -193,5 +193,3 @@ export const courses: Course[] = [
     ],
   },
 ];
-
-export const getCourse = (slug: string) => courses.find((c) => c.slug === slug);

@@ -3,7 +3,7 @@
 import { useActionState } from "react";
 import { Field, Input } from "@/components/form-fields";
 import { Button } from "@/components/ui";
-import { changeOwnPassword, createAdminUser, createTeacherLogin, login, resetUserPassword, type AuthState } from "@/lib/auth/actions";
+import { changeOwnPassword, createAdminUser, createParentLogin, createStudentLogin, createTeacherLogin, login, resetUserPassword, type AuthState } from "@/lib/auth/actions";
 
 const initial: AuthState = {};
 
@@ -103,6 +103,38 @@ export function CreateTeacherLoginForm({ teacherId }: { teacherId: string }) {
   );
 }
 
+export function CreateParentLoginForm({ guardianId }: { guardianId: string }) {
+  const [state, action, pending] = useActionState(createParentLogin.bind(null, guardianId), initial);
+  const e = state.errors ?? {};
+  return (
+    <form action={action} className="space-y-3" noValidate>
+      <Notice state={state} />
+      <Field label="Temporary password" name="password" error={e.password} hint="10+ characters, letters and numbers. A username like QN1001 is generated for you.">
+        <Input name="password" type="text" autoComplete="off" error={e.password} />
+      </Field>
+      <Button type="submit" disabled={pending}>
+        {pending ? "Creating…" : "Create family login"}
+      </Button>
+    </form>
+  );
+}
+
+export function CreateStudentLoginForm({ studentId }: { studentId: string }) {
+  const [state, action, pending] = useActionState(createStudentLogin.bind(null, studentId), initial);
+  const e = state.errors ?? {};
+  return (
+    <form action={action} className="space-y-3" noValidate>
+      <Notice state={state} />
+      <Field label="Temporary password" name="password" error={e.password} hint="10+ characters, letters and numbers. A username like QS1001 is generated for you.">
+        <Input name="password" type="text" autoComplete="off" error={e.password} />
+      </Field>
+      <Button type="submit" disabled={pending}>
+        {pending ? "Creating…" : "Create student login"}
+      </Button>
+    </form>
+  );
+}
+
 export function ResetPasswordForm({ userId }: { userId: string }) {
   const [state, action, pending] = useActionState(resetUserPassword.bind(null, userId), initial);
   const e = state.errors ?? {};
@@ -120,7 +152,7 @@ export function ResetPasswordForm({ userId }: { userId: string }) {
         {e.password && <p className="mt-1 text-xs text-red-700">{e.password}</p>}
         {state.message && <p className={`mt-1 text-xs ${state.ok ? "text-brand-700" : "text-red-700"}`}>{state.message}</p>}
       </div>
-      <button type="submit" disabled={pending} className="rounded-lg border border-brand-300 px-3 py-1.5 text-sm font-semibold text-brand-700 hover:bg-brand-50">
+      <button type="submit" disabled={pending} className="rounded-lg border border-brand-300 px-3 py-2.5 text-sm font-semibold sm:py-1.5 text-brand-700 hover:bg-brand-50">
         {pending ? "…" : "Reset"}
       </button>
     </form>

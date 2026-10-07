@@ -24,6 +24,21 @@ const paths = {
   more: "M5 12h.01M12 12h.01M19 12h.01",
   layers: "M12 3l9 5-9 5-9-5 9-5zM3 13l9 5 9-5M3 17.5l9 5 9-5",
   edit: "M4 20h4L19 9l-4-4L4 16v4zM13 7l4 4",
+  bell: "M6 8a6 6 0 1112 0c0 7 3 9 3 9H3s3-2 3-9zM10.3 21a1.9 1.9 0 003.4 0",
+  users: "M9 11a4 4 0 100-8 4 4 0 000 8zM2 20a7 7 0 0114 0M17 11a3 3 0 100-6M19.5 20a5.5 5.5 0 00-3-4.9",
+  award: "M12 15a6 6 0 100-12 6 6 0 000 12zM8.5 14l-1.5 7 5-3 5 3-1.5-7",
+  book: "M4 5a2 2 0 012-2h13v16H6a2 2 0 00-2 2V5zM4 19a2 2 0 012-2h13",
+  "user-minus": "M10 12a4 4 0 100-8 4 4 0 000 8zM3 20a7 7 0 0114 0M17 8h5",
+  plus: "M12 5v14M5 12h14",
+  "arrow-left": "M19 12H5M11 6l-6 6 6 6",
+  "arrow-right": "M5 12h14M13 6l6 6-6 6",
+  printer: "M7 8V3h10v5M7 17H5a1 1 0 01-1-1v-6a1 1 0 011-1h14a1 1 0 011 1v6a1 1 0 01-1 1h-2M7 14h10v7H7z",
+  external: "M14 4h6v6M10 14L20 4M18 14v5a1 1 0 01-1 1H5a1 1 0 01-1-1V7a1 1 0 011-1h5",
+  download: "M12 4v11M7 11l5 5 5-5M5 20h14",
+  lock: "M7 11V8a5 5 0 0110 0v3M6 11h12a1 1 0 011 1v8a1 1 0 01-1 1H6a1 1 0 01-1-1v-8a1 1 0 011-1z",
+  phone: "M8 3h8a1 1 0 011 1v16a1 1 0 01-1 1H8a1 1 0 01-1-1V4a1 1 0 011-1zM11 18h2",
+  expand: "M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5",
+  "chevron-left": "M15 6l-6 6 6 6",
 } as const;
 
 export type IconName = keyof typeof paths;

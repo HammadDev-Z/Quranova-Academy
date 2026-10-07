@@ -41,7 +41,7 @@ export const getSite = cache(async (): Promise<Site> => {
     whatsappMessage: s.whatsappMessage,
     trialDays: num(s.trialDays, 3),
     sessionMinutes: num(s.sessionMinutes, 30),
-    siblingDiscountPercent: num(s.siblingDiscountPercent, 15),
+    siblingDiscountPercent: num(s.siblingDiscountPercent, 10),
     announcement: s.announcement,
     adminTimezone: s.adminTimezone,
     rates: {

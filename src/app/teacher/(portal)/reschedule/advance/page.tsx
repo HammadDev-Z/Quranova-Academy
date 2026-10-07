@@ -39,7 +39,7 @@ export default async function AdvanceReschedulePage() {
       />
       <TCard>
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[720px] text-left">
+          <table className="stack-table w-full min-w-[720px] text-left">
             <thead>
               <tr className="text-xs font-bold uppercase tracking-wider text-slate-500">
                 <th scope="col" className="px-3 py-4">Student name</th>
@@ -63,21 +63,21 @@ export default async function AdvanceReschedulePage() {
                 const left = MAX_RESCHEDULES - r.rescheduleCount;
                 return (
                   <tr key={r.id} className="border-t border-slate-100 align-middle">
-                    <td className="px-3 py-5 font-sans text-lg font-semibold uppercase text-navy">{r.student}</td>
-                    <td className="whitespace-nowrap px-3 py-5 text-slate-600">{formatDateShort(r.startsAt, tz)}</td>
-                    <td className="px-3 py-5">
+                    <td data-primary className="px-3 py-5 font-sans text-lg font-semibold uppercase text-navy">{r.student}</td>
+                    <td data-label="Date" className="whitespace-nowrap px-3 py-5 text-slate-600">{formatDateShort(r.startsAt, tz)}</td>
+                    <td data-label="Time" className="px-3 py-5">
                       <span className="inline-block whitespace-nowrap rounded-xl bg-green-500 px-4 py-2 text-sm font-bold text-white">{formatTime12(r.startsAt, tz)}</span>
                     </td>
-                    <td className="px-3 py-5 text-slate-600">{r.course ?? "—"}</td>
-                    <td className="px-3 py-5">
+                    <td data-label="Course" className="px-3 py-5 text-slate-600">{r.course ?? "—"}</td>
+                    <td data-label="Type" className="px-3 py-5">
                       <Pill tone={r.isTrial ? "amber" : "blue"}>{r.isTrial ? "Trial" : "Regular"}</Pill>
                     </td>
-                    <td className="px-3 py-5">
+                    <td data-label="Re status" className="px-3 py-5">
                       <span className="inline-block rounded-xl bg-sky-100 px-3 py-2 text-sm font-semibold text-sky-600">
                         Re {r.rescheduleCount}/{MAX_RESCHEDULES}
                       </span>
                     </td>
-                    <td className="px-3 py-5 text-right">
+                    <td data-wide className="px-3 py-5 text-right">
                       {left > 0 ? (
                         <Link href={`/teacher/reschedule/${r.id}`} className={btnYellow}>
                           <Icon name="calendar-clock" className="h-5 w-5" /> Move

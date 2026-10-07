@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
 const id = () =>
   text("id")
@@ -30,6 +30,10 @@ export const users = sqliteTable("users", {
   role: text("role", { enum: roles }).notNull().default("admin"),
   active: bool("active"),
   phone: text("phone").notNull().default(""),
+  // Family logins sign in with a short username (e.g. QN1001) or their email.
+  username: text("username").unique(),
+  // Notifications newer than this show as unread in the family portal.
+  notificationsSeenAt: integer("notifications_seen_at", { mode: "timestamp_ms" }),
   lastLoginAt: integer("last_login_at", { mode: "timestamp_ms" }),
   createdAt: createdAt(),
 });
@@ -41,8 +45,14 @@ export const sessions = sqliteTable("sessions", {
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
   expiresAt: integer("expires_at", { mode: "timestamp_ms" }).notNull(),
+  // "Keep me signed in" sessions, listed under Remembered devices.
+  remembered: bool("remembered", false),
+  userAgent: text("user_agent").notNull().default(""),
   createdAt: createdAt(),
-});
+}, (t) => [
+  index("sessions_user_idx").on(t.userId),
+  index("sessions_expires_idx").on(t.expiresAt),
+]);
 
 /* ───────── Website content ───────── */
 
@@ -133,7 +143,9 @@ export const teachers = sqliteTable("teachers", {
   showOnWebsite: bool("show_on_website", false),
   sortOrder: integer("sort_order").notNull().default(0),
   createdAt: createdAt(),
-});
+}, (t) => [
+  index("teachers_user_idx").on(t.userId),
+]);
 
 export const guardians = sqliteTable("guardians", {
   id: id(),
@@ -145,7 +157,9 @@ export const guardians = sqliteTable("guardians", {
   timezone: text("timezone").notNull().default(""),
   notes: text("notes").notNull().default(""),
   createdAt: createdAt(),
-});
+}, (t) => [
+  index("guardians_user_idx").on(t.userId),
+]);
 
 export const studentStatuses = ["trial", "active", "paused", "completed", "left"] as const;
 
@@ -175,7 +189,13 @@ export const students = sqliteTable("students", {
   notes: text("notes").notNull().default(""),
   createdAt: createdAt(),
   updatedAt: updatedAt(),
-});
+}, (t) => [
+  index("students_user_idx").on(t.userId),
+  index("students_guardian_idx").on(t.guardianId),
+  index("students_teacher_idx").on(t.teacherId),
+  index("students_course_idx").on(t.courseId),
+  index("students_status_idx").on(t.status),
+]);
 
 /* ───────── Sales ───────── */
 
@@ -200,7 +220,10 @@ export const leads = sqliteTable("leads", {
   studentId: text("student_id").references(() => students.id, { onDelete: "set null" }),
   createdAt: createdAt(),
   updatedAt: updatedAt(),
-});
+}, (t) => [
+  index("leads_status_idx").on(t.status),
+  index("leads_created_idx").on(t.createdAt),
+]);
 
 /* ───────── Teaching ───────── */
 
@@ -234,7 +257,12 @@ export const classSessions = sqliteTable("class_sessions", {
   rescheduleCount: integer("reschedule_count").notNull().default(0),
   createdAt: createdAt(),
   updatedAt: updatedAt(),
-});
+}, (t) => [
+  index("classes_student_idx").on(t.studentId),
+  index("classes_teacher_starts_idx").on(t.teacherId, t.startsAt),
+  index("classes_starts_idx").on(t.startsAt),
+  index("classes_status_idx").on(t.status),
+]);
 
 export const rescheduleRequestedBy = ["teacher", "admin"] as const;
 export const rescheduleKinds = ["recovery", "advance", "swap"] as const;
@@ -251,7 +279,9 @@ export const classReschedules = sqliteTable("class_reschedules", {
   kind: text("kind", { enum: rescheduleKinds }).notNull().default("recovery"),
   note: text("note").notNull().default(""),
   createdAt: createdAt(),
-});
+}, (t) => [
+  index("reschedules_class_idx").on(t.classId),
+]);
 
 export const reportStatuses = ["draft", "submitted", "reviewed"] as const;
 
@@ -271,7 +301,10 @@ export const progressReports = sqliteTable("progress_reports", {
   reviewedAt: integer("reviewed_at", { mode: "timestamp_ms" }),
   reviewedBy: text("reviewed_by").references(() => users.id, { onDelete: "set null" }),
   createdAt: createdAt(),
-});
+}, (t) => [
+  index("reports_student_idx").on(t.studentId),
+  index("reports_teacher_idx").on(t.teacherId),
+]);
 
 /** One weekly recurring slot a teacher says they can teach in. */
 export const availabilitySlots = sqliteTable("availability_slots", {
@@ -283,7 +316,9 @@ export const availabilitySlots = sqliteTable("availability_slots", {
   startTime: text("start_time").notNull(), // "HH:MM", in the teacher's own time zone
   endTime: text("end_time").notNull(),
   createdAt: createdAt(),
-});
+}, (t) => [
+  index("availability_teacher_idx").on(t.teacherId),
+]);
 
 /** Downloadable resources (PDFs, audio, etc.) the admin publishes for teachers. */
 export const materials = sqliteTable("materials", {
@@ -295,6 +330,36 @@ export const materials = sqliteTable("materials", {
   sizeBytes: integer("size_bytes").notNull().default(0),
   createdAt: createdAt(),
 });
+
+/** Course-completion certificates issued by the admin and shown to families. */
+export const certificates = sqliteTable("certificates", {
+  id: id(),
+  number: text("number").notNull().unique(),
+  studentId: text("student_id")
+    .notNull()
+    .references(() => students.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  issuedOn: text("issued_on").notNull(), // YYYY-MM-DD
+  note: text("note").notNull().default(""),
+  createdAt: createdAt(),
+}, (t) => [
+  index("certificates_student_idx").on(t.studentId),
+]);
+
+/** One page image of a course (e.g. a mushaf page), uploaded by the admin and shown in the lesson viewer. */
+export const lessonPages = sqliteTable("lesson_pages", {
+  id: id(),
+  courseId: text("course_id")
+    .notNull()
+    .references(() => courses.id, { onDelete: "cascade" }),
+  part: text("part").notNull().default(""), // e.g. "Para 01"
+  pageNo: integer("page_no").notNull(),
+  label: text("label").notNull(),
+  fileExt: text("file_ext").notNull(),
+  createdAt: createdAt(),
+}, (t) => [
+  index("lessons_course_part_page_idx").on(t.courseId, t.part, t.pageNo),
+]);
 
 /* ───────── Money ───────── */
 
@@ -315,7 +380,10 @@ export const invoices = sqliteTable("invoices", {
   reference: text("reference").notNull().default(""),
   notes: text("notes").notNull().default(""),
   createdAt: createdAt(),
-});
+}, (t) => [
+  index("invoices_student_idx").on(t.studentId),
+  index("invoices_status_idx").on(t.status),
+]);
 
 /* ───────── Audit ───────── */
 
@@ -328,4 +396,6 @@ export const activity = sqliteTable("activity", {
   entityId: text("entity_id").notNull().default(""),
   summary: text("summary").notNull().default(""),
   createdAt: createdAt(),
-});
+}, (t) => [
+  index("activity_created_idx").on(t.createdAt),
+]);

@@ -1,7 +1,12 @@
 // Plain constants shared by the teacher actions and pages. Kept out of
 // actions.ts because a "use server" file may only export async functions.
-export const RESCHEDULE_WINDOW_DAYS = 30;
+import { DAY_MS } from "@/lib/constants";
+
+const RESCHEDULE_WINDOW_DAYS = 30;
 export const MAX_RESCHEDULES = 2;
+
+/** The last moment a missed or leave class can still be rescheduled. */
+export const recoveryDeadline = (startsAt: Date) => new Date(startsAt.getTime() + RESCHEDULE_WINDOW_DAYS * DAY_MS);
 
 /** Statuses that create a recovery class the teacher can reschedule. */
 export const RECOVERY_STATUSES = ["missed_student", "missed_teacher", "student_leave", "teacher_leave"] as const;

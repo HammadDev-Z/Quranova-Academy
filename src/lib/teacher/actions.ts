@@ -7,15 +7,12 @@ import { availabilitySlots, classReschedules, classSessions, classStatuses, db, 
 import { logActivity } from "@/lib/admin/log";
 import { dayKey } from "@/lib/admin/time";
 import { requireTeacher } from "@/lib/auth/session";
-import { MAX_RESCHEDULES, MIN_NOTICE_MINUTES, RECOVERY_STATUSES, RESCHEDULE_WINDOW_DAYS } from "./constants";
+import { revalidateAreas } from "@/lib/revalidate";
+import { MAX_RESCHEDULES, MIN_NOTICE_MINUTES, RECOVERY_STATUSES, recoveryDeadline } from "./constants";
 import { checkSlot } from "./slots";
 
-const refresh = () => {
-  revalidatePath("/teacher", "layout");
-  revalidatePath("/admin", "layout");
-};
+const refresh = () => revalidateAreas("teacher", "admin");
 
-const DAY_MS = 24 * 60 * 60 * 1000;
 type ClassStatus = (typeof classStatuses)[number];
 const isRecovery = (s: string) => (RECOVERY_STATUSES as readonly string[]).includes(s);
 
@@ -46,7 +43,7 @@ export async function markClassStatus(classId: string, status: string) {
 
   const patch: Partial<typeof classSessions.$inferInsert> = { status: status as ClassStatus };
   if (isRecovery(status) && !row.rescheduleDeadline) {
-    patch.rescheduleDeadline = new Date(row.startsAt.getTime() + RESCHEDULE_WINDOW_DAYS * DAY_MS);
+    patch.rescheduleDeadline = recoveryDeadline(row.startsAt);
   }
   await db.update(classSessions).set(patch).where(eq(classSessions.id, classId));
   await logActivity(me, "updated", "class", classId, `Class marked ${status.replace(/_/g, " ")}`);
@@ -64,7 +61,7 @@ export async function saveClassNotes(classId: string, _prev: NotesState, formDat
   const homework = String(formData.get("homework") ?? "").trim().slice(0, 3000);
   await db.update(classSessions).set({ lessonNotes, homework }).where(eq(classSessions.id, classId));
   await logActivity(me, "updated", "class", classId, "Updated lesson notes");
-  revalidatePath("/teacher", "layout");
+  revalidateAreas("teacher");
   return { ok: true, message: "Notes saved." };
 }
 
@@ -128,7 +125,7 @@ export async function rescheduleToSlot(classId: string, _prev: RescheduleState, 
     return { message: `This class has already been rescheduled the maximum of ${MAX_RESCHEDULES} times.` };
   }
   if (recovery) {
-    const deadline = row.rescheduleDeadline ?? new Date(row.startsAt.getTime() + RESCHEDULE_WINDOW_DAYS * DAY_MS);
+    const deadline = row.rescheduleDeadline ?? recoveryDeadline(row.startsAt);
     if (deadline.getTime() < Date.now()) return { message: "The 30-day window for this class has ended." };
   }
 

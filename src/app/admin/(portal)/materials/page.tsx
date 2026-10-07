@@ -51,7 +51,7 @@ export default async function MaterialsPage() {
                       View
                     </a>
                     <form action={deleteMaterial.bind(null, m.id)} className="ml-4 inline">
-                      <ConfirmButton message="Delete this material? This cannot be undone." className="font-semibold text-red-700 hover:underline">
+                      <ConfirmButton message="Delete this material? This cannot be undone." className="tap font-semibold text-red-700 hover:underline">
                         Delete
                       </ConfirmButton>
                     </form>

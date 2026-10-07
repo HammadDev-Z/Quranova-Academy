@@ -1,10 +1,10 @@
 "use server";
 
-import { and, eq, ne } from "drizzle-orm";
+import { and, eq, ne, or, sql } from "drizzle-orm";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { db, sessions, teachers as teachersTable, users } from "@/db";
+import { db, guardians as guardiansTable, sessions, students as studentsTable, teachers as teachersTable, users } from "@/db";
 import { logActivity } from "@/lib/admin/log";
 import { rateLimit } from "@/lib/rate-limit";
 import { hashPassword, passwordProblem, verifyPassword } from "./password";
@@ -12,31 +12,47 @@ import { createSession, destroySession, getCurrentUser, requireAdmin } from "./s
 
 export type AuthState = { ok?: boolean; message?: string; errors?: Record<string, string>; email?: string };
 
-async function performLogin(formData: FormData, role: "admin" | "teacher", home: string): Promise<AuthState> {
-  const email = String(formData.get("email") ?? "").trim().toLowerCase();
+// Verified against when the account is unknown, so response time does not
+// reveal which usernames or emails exist.
+const DUMMY_HASH = "scrypt$AAAAAAAAAAAAAAAAAAAAAA==$" + "A".repeat(86) + "==";
+
+const REMEMBER_DAYS = 10;
+
+async function performLogin(formData: FormData, role: "admin" | "teacher" | "parent", home: string): Promise<AuthState> {
+  // Staff sign in with an email. Families can also use their short username.
+  const ident = String(formData.get("email") ?? formData.get("identifier") ?? "").trim().toLowerCase();
   const password = String(formData.get("password") ?? "");
-  if (!email || !password) return { message: "Enter your email and password." };
+  if (!ident || !password) return { message: role === "parent" ? "Enter your username and password." : "Enter your email and password." };
 
   const h = await headers();
   const ip = h.get("cf-connecting-ip") ?? h.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
-  if (!rateLimit(`login:${email}:${ip}`, 8, 15 * 60 * 1000) || !rateLimit(`login-ip:${ip}`, 30, 15 * 60 * 1000)) {
-    return { message: "Too many attempts. Please wait 15 minutes and try again.", email };
+  if (!rateLimit(`login:${ident}:${ip}`, 8, 15 * 60 * 1000) || !rateLimit(`login-ip:${ip}`, 30, 15 * 60 * 1000)) {
+    return { message: "Too many attempts. Please wait 15 minutes and try again.", email: ident };
   }
 
-  const [user] = await db.select().from(users).where(eq(users.email, email)).limit(1);
+  const [user] = await db
+    .select()
+    .from(users)
+    .where(or(eq(users.email, ident), eq(sql`lower(${users.username})`, ident)))
+    .limit(1);
   const ok = await verifyPassword(password, user?.passwordHash ?? DUMMY_HASH);
 
-  if (!user || !ok || !user.active) return { message: "Incorrect email or password.", email };
-  if (user.role !== role) return { message: `This account does not have access to the ${role} portal.`, email };
+  if (!user || !ok || !user.active) return { message: role === "parent" ? "Incorrect username or password." : "Incorrect email or password.", email: ident };
+  // The student portal accepts both parent and student accounts.
+  const allowed = role === "parent" ? ["parent", "student"] : [role];
+  if (!allowed.includes(user.role)) return { message: `This account does not have access to the ${role === "parent" ? "family" : role} portal.`, email: ident };
 
-  await createSession(user.id);
+  // Families: "keep me signed in" lasts 10 days; otherwise the login ends with the browser (1 day at most).
+  const remember = role === "parent" && formData.get("remember") === "on";
+  await createSession(
+    user.id,
+    role === "parent"
+      ? { days: remember ? REMEMBER_DAYS : 1, persistent: remember, remembered: remember, userAgent: h.get("user-agent") ?? "" }
+      : { userAgent: h.get("user-agent") ?? "" },
+  );
   await logActivity({ id: user.id, email: user.email, name: user.name, role: user.role }, "login", "session", user.id, `${user.name} signed in`);
   redirect(home);
 }
-
-// Verified against when the email is unknown, so response time does not reveal
-// which emails have accounts.
-const DUMMY_HASH = "scrypt$AAAAAAAAAAAAAAAAAAAAAA==$" + "A".repeat(86) + "==";
 
 export async function login(_prev: AuthState, formData: FormData): Promise<AuthState> {
   return performLogin(formData, "admin", "/admin");
@@ -44,6 +60,10 @@ export async function login(_prev: AuthState, formData: FormData): Promise<AuthS
 
 export async function loginTeacher(_prev: AuthState, formData: FormData): Promise<AuthState> {
   return performLogin(formData, "teacher", "/teacher");
+}
+
+export async function loginParent(_prev: AuthState, formData: FormData): Promise<AuthState> {
+  return performLogin(formData, "parent", "/student");
 }
 
 async function performLogout(redirectTo: string) {
@@ -57,6 +77,10 @@ export async function logout() {
 
 export async function logoutTeacher() {
   await performLogout("/teacher/login");
+}
+
+export async function logoutParent() {
+  await performLogout("/student/login");
 }
 
 /* ───────── Admin accounts ───────── */
@@ -170,4 +194,75 @@ export async function createTeacherLogin(teacherId: string, _prev: AuthState, fo
   await logActivity(me, "created", "user", row.id, `Created teacher portal login for ${teacher.email}`);
   revalidatePath(`/admin/teachers/${teacherId}`);
   return { ok: true, message: `Portal login created for ${teacher.email}. Share the password with them securely.` };
+}
+
+/* ───────── Family (parent) portal logins ───────── */
+
+async function nextUsername(): Promise<string> {
+  const rows = await db.select({ u: users.username }).from(users).where(sql`${users.username} like 'QN%'`);
+  const top = rows.reduce((m, r) => Math.max(m, parseInt((r.u ?? "").slice(2), 10) || 0), 1000);
+  return `QN${top + 1}`;
+}
+
+/**
+ * Creates the family login for a parent record. The family signs in with the
+ * generated username (or the parent's email, if one is on file).
+ */
+export async function createParentLogin(guardianId: string, _prev: AuthState, formData: FormData): Promise<AuthState> {
+  const me = await requireAdmin();
+  const [guardian] = await db.select().from(guardiansTable).where(eq(guardiansTable.id, guardianId)).limit(1);
+  if (!guardian) return { message: "Parent not found." };
+  if (guardian.userId) return { message: "This parent already has a portal login." };
+
+  const password = String(formData.get("password") ?? "");
+  const problem = passwordProblem(password);
+  if (problem) return { errors: { password: problem } };
+
+  const username = await nextUsername();
+  // users.email is required and unique. Parents without an email get a placeholder on a reserved
+  // domain that can never receive mail; they sign in with their username.
+  let email = guardian.email.trim().toLowerCase();
+  if (email) {
+    const [clash] = await db.select({ id: users.id }).from(users).where(eq(users.email, email)).limit(1);
+    if (clash) email = "";
+  }
+  if (!email) email = `${username.toLowerCase()}@family.invalid`;
+
+  const [row] = await db
+    .insert(users)
+    .values({ name: guardian.name, email, username, passwordHash: await hashPassword(password), role: "parent" })
+    .returning({ id: users.id });
+  await db.update(guardiansTable).set({ userId: row.id }).where(eq(guardiansTable.id, guardianId));
+  await logActivity(me, "created", "user", row.id, `Created student portal login ${username} for ${guardian.name}`);
+  revalidatePath(`/admin/guardians/${guardianId}`);
+  return { ok: true, message: `Family login created. Username: ${username}. Share it and the password with the parent securely.` };
+}
+
+/**
+ * Creates a student login: a child who signs in to see only their own classes,
+ * lessons and certificates. They use the same sign-in page as parents.
+ */
+export async function createStudentLogin(studentId: string, _prev: AuthState, formData: FormData): Promise<AuthState> {
+  const me = await requireAdmin();
+  const [student] = await db.select().from(studentsTable).where(eq(studentsTable.id, studentId)).limit(1);
+  if (!student) return { message: "Student not found." };
+  if (student.userId) return { message: "This student already has a portal login." };
+  if (!student.guardianId) return { message: "Link this student to a parent first. Student logins use the parent record for time zone and contact details." };
+
+  const password = String(formData.get("password") ?? "");
+  const problem = passwordProblem(password);
+  if (problem) return { errors: { password: problem } };
+
+  const rows = await db.select({ u: users.username }).from(users).where(sql`${users.username} like 'QS%'`);
+  const top = rows.reduce((m, r) => Math.max(m, parseInt((r.u ?? "").slice(2), 10) || 0), 1000);
+  const username = `QS${top + 1}`;
+
+  const [row] = await db
+    .insert(users)
+    .values({ name: student.name, email: `${username.toLowerCase()}@family.invalid`, username, passwordHash: await hashPassword(password), role: "student" })
+    .returning({ id: users.id });
+  await db.update(studentsTable).set({ userId: row.id }).where(eq(studentsTable.id, studentId));
+  await logActivity(me, "created", "user", row.id, `Created student portal login ${username} for ${student.name}`);
+  revalidatePath(`/admin/students/${studentId}`);
+  return { ok: true, message: `Student login created. Username: ${username}. Share it and the password with the student securely.` };
 }

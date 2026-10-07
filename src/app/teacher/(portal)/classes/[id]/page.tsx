@@ -80,7 +80,7 @@ export default async function ClassDetailPage({ params }: { params: Promise<{ id
                 Open class link ↗
               </a>
             )}
-            <Link href={`/teacher/students/${cls.studentId}`} className="mt-5 block text-sm font-semibold text-green-600 hover:underline">
+            <Link href={`/teacher/students/${cls.studentId}`} className="tap mt-5 block text-sm font-semibold text-green-600 hover:underline">
               View student →
             </Link>
           </TCard>

@@ -54,7 +54,7 @@ export function CookieConsent() {
         <div
           role="dialog"
           aria-label="Cookie preferences"
-          className="fixed inset-x-3 bottom-3 z-50 mx-auto max-w-3xl rounded-2xl border border-brand-100 bg-white p-4 shadow-xl sm:bottom-5 sm:p-5"
+          className="sheet-in fixed inset-x-3 bottom-3 z-50 mx-auto max-w-3xl rounded-2xl border border-brand-100 bg-white p-4 shadow-xl sm:bottom-5 sm:p-5"
         >
           <p className="text-sm text-ink">
             We use optional analytics cookies to understand how the site is used. Nothing is tracked unless you accept.

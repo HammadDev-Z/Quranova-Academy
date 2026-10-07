@@ -36,7 +36,7 @@ export function AdminNav({
   return (
     <>
       <div className="sticky top-0 z-30 flex items-center justify-between border-b border-brand-800 bg-brand-900 px-4 py-3 text-white lg:hidden">
-        <Link href={homeHref} className="flex items-center gap-2 font-serif text-lg font-bold">
+        <Link href={homeHref} className="flex items-center gap-2 py-1.5 font-serif text-lg font-bold">
           <LogoMark className="h-8 w-8" /> {portalLabel.replace(" portal", "")}
         </Link>
         <button

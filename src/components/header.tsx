@@ -26,7 +26,7 @@ export function Header({ courses, trialDays, phoneDisplay, phoneHref, email, ann
   const isActive = (href: string) => (href === "/" ? pathname === "/" : pathname.startsWith(href));
 
   return (
-    <header className="sticky top-0 z-40 border-b border-brand-100 bg-cream/95 backdrop-blur">
+    <header className="sticky top-0 z-40 border-b border-brand-100 bg-cream/95 backdrop-blur-md">
       {announcement && (
         <p className="bg-gold-500 px-4 py-1.5 text-center text-sm font-medium text-brand-900">{announcement}</p>
       )}
@@ -54,19 +54,19 @@ export function Header({ courses, trialDays, phoneDisplay, phoneHref, email, ann
                 <Link
                   href={item.href}
                   className={cn(
-                    "rounded-full px-3.5 py-2 text-sm font-medium hover:bg-brand-50",
+                    "rounded-full px-3.5 py-2 text-sm font-medium transition-colors hover:bg-brand-50",
                     isActive(item.href) ? "text-brand-600" : "text-ink",
                   )}
                 >
                   {item.label}
                 </Link>
-                <div className="invisible absolute left-0 top-full w-72 pt-2 opacity-0 transition group-focus-within:visible group-focus-within:opacity-100 group-hover:visible group-hover:opacity-100">
+                <div className="invisible absolute left-0 top-full w-72 pt-2 -translate-y-1 opacity-0 transition duration-200 group-focus-within:visible group-focus-within:translate-y-0 group-focus-within:opacity-100 group-hover:visible group-hover:translate-y-0 group-hover:opacity-100">
                   <ul className="rounded-2xl border border-brand-100 bg-white p-2 shadow-lg">
                     {courses.map((c) => (
                       <li key={c.slug}>
                         <Link
                           href={`/courses/${c.slug}`}
-                          className="block rounded-xl px-3 py-2 text-sm text-ink hover:bg-brand-50 hover:text-brand-700"
+                          className="block rounded-xl px-3 py-2 text-sm text-ink transition-colors hover:bg-brand-50 hover:text-brand-700"
                         >
                           {c.title}
                         </Link>
@@ -80,7 +80,7 @@ export function Header({ courses, trialDays, phoneDisplay, phoneHref, email, ann
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  "rounded-full px-3.5 py-2 text-sm font-medium hover:bg-brand-50",
+                  "rounded-full px-3.5 py-2 text-sm font-medium transition-colors hover:bg-brand-50",
                   isActive(item.href) ? "text-brand-600" : "text-ink",
                 )}
               >
@@ -96,7 +96,7 @@ export function Header({ courses, trialDays, phoneDisplay, phoneHref, email, ann
           </Button>
           <button
             type="button"
-            className="rounded-full p-2 text-brand-800 hover:bg-brand-50 lg:hidden"
+            className="rounded-full p-2 text-brand-800 transition hover:bg-brand-50 active:scale-90 lg:hidden"
             aria-label={open ? "Close menu" : "Open menu"}
             aria-expanded={open}
             aria-controls="mobile-menu"
@@ -110,14 +110,14 @@ export function Header({ courses, trialDays, phoneDisplay, phoneHref, email, ann
       </div>
 
       {open && (
-        <nav id="mobile-menu" aria-label="Mobile" className="border-t border-brand-100 bg-white lg:hidden">
-          <ul className="mx-auto max-w-6xl space-y-1 px-4 py-3">
+        <nav id="mobile-menu" aria-label="Mobile" className="fade-in max-h-[calc(100dvh-5rem)] overflow-y-auto border-t border-brand-100 bg-white lg:hidden">
+          <ul className="stagger mx-auto max-w-6xl space-y-1 px-4 py-3">
             {nav.map((item) => (
               <li key={item.href}>
                 <Link
                   href={item.href}
                   className={cn(
-                    "block rounded-xl px-3 py-2.5 font-medium",
+                    "block rounded-xl px-3 py-2.5 font-medium transition-colors",
                     isActive(item.href) ? "bg-brand-50 text-brand-700" : "text-ink hover:bg-brand-50",
                   )}
                 >

@@ -5,7 +5,7 @@ export type Option = { value: string; label: string };
 /** Entities whose records can be picked in a <select>. Resolved on the server. */
 export type OptionSource = "courses" | "teachers" | "students" | "guardians" | "packages";
 
-export type FieldType =
+type FieldType =
   | "text"
   | "email"
   | "tel"

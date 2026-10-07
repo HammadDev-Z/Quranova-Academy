@@ -11,7 +11,8 @@ import { logActivity } from "./log";
 import { MATERIALS_DIR } from "./materials-paths";
 
 const MAX_BYTES = 20 * 1024 * 1024; // 20MB
-const ALLOWED_TYPES = new Set(["application/pdf", "image/png", "image/jpeg", "audio/mpeg", "audio/mp4", "video/mp4"]);
+const ALLOWED_TYPES = new Set(["application/pdf", "image/png", "image/jpeg", "audio/mpeg", "audio/mp4", "audio/x-m4a", "video/mp4"]);
+const ALLOWED_EXTS = new Set(["pdf", "png", "jpg", "jpeg", "mp3", "m4a", "mp4"]);
 
 export type MaterialState = { ok?: boolean; message?: string; errors?: Record<string, string> };
 
@@ -27,8 +28,9 @@ export async function uploadMaterial(_prev: MaterialState, formData: FormData): 
     errors.file = "Choose a file";
   } else if (file.size > MAX_BYTES) {
     errors.file = "File is too large (max 20MB)";
-  } else if (file.type && !ALLOWED_TYPES.has(file.type)) {
-    errors.file = "Allowed types: PDF, PNG/JPEG image, MP3 or MP4";
+  } else if (!ALLOWED_EXTS.has((file.name.split(".").pop() ?? "").toLowerCase()) || (file.type && !ALLOWED_TYPES.has(file.type))) {
+    // The extension decides how the file is stored and served, so it must be on the list too.
+    errors.file = "Allowed types: PDF, PNG/JPEG image, MP3, M4A or MP4";
   }
   if (Object.keys(errors).length) return { errors, message: "Please fix the highlighted fields." };
 

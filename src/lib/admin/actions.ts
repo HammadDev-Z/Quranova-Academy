@@ -1,10 +1,10 @@
 "use server";
 
 import { eq } from "drizzle-orm";
-import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { db } from "@/db";
 import { requireAdmin } from "@/lib/auth/session";
+import { revalidateAreas } from "@/lib/revalidate";
 import { getRawSettings } from "@/lib/settings";
 import { loadOptions } from "./options";
 import { type AdminFormState, parseFields } from "./form";
@@ -13,8 +13,7 @@ import { logActivity } from "./log";
 import { getResource } from "./resources";
 
 function refresh(publicSite?: boolean) {
-  revalidatePath("/admin", "layout");
-  if (publicSite) revalidatePath("/", "layout");
+  revalidateAreas("admin", ...(publicSite ? (["site"] as const) : []));
 }
 
 /** Create or update any record described in resources.ts. `id` is "new" when creating. */

@@ -35,7 +35,7 @@ export function PageTitle({
 }
 
 export function TCard({ className, children }: { className?: string; children: ReactNode }) {
-  return <section className={cn("rounded-3xl border border-slate-200/80 bg-white p-5 shadow-[0_1px_2px_rgba(15,27,61,0.04)] sm:p-7", className)}>{children}</section>;
+  return <section className={cn("min-w-0 rounded-3xl border border-slate-200/80 bg-white p-5 shadow-[0_1px_2px_rgba(15,27,61,0.04)] sm:p-7", className)}>{children}</section>;
 }
 
 type Tone = "green" | "blue" | "purple" | "red" | "amber" | "slate" | "rose" | "sky";
@@ -122,10 +122,10 @@ export function IconCircle({
 }
 
 export const btnGreen =
-  "inline-flex items-center justify-center gap-2 rounded-xl bg-green-500 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-green-600 disabled:opacity-60";
+  "inline-flex items-center justify-center gap-2 rounded-xl bg-green-500 px-5 py-3 text-sm font-semibold text-white shadow-sm transition duration-200 hover:bg-green-600 active:scale-[0.97] disabled:opacity-60";
 export const btnSoft =
-  "inline-flex items-center justify-center gap-2 rounded-xl bg-green-100 px-5 py-3 text-sm font-semibold text-green-600 transition hover:bg-green-200 disabled:opacity-60";
+  "inline-flex items-center justify-center gap-2 rounded-xl bg-green-100 px-5 py-3 text-sm font-semibold text-green-600 transition duration-200 hover:bg-green-200 active:scale-[0.97] disabled:opacity-60";
 export const btnYellow =
-  "inline-flex items-center justify-center gap-2 rounded-xl bg-amber-400 px-5 py-3 text-sm font-semibold text-amber-950 shadow-sm transition hover:bg-amber-300";
+  "inline-flex items-center justify-center gap-2 rounded-xl bg-amber-400 px-5 py-3 text-sm font-semibold text-amber-950 shadow-sm transition duration-200 hover:bg-amber-300 active:scale-[0.97]";
 export const inputBase =
-  "w-full rounded-xl border border-transparent bg-slate-100/80 px-4 py-3 text-slate-800 placeholder:text-slate-400 focus:border-green-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-green-200";
+  "w-full rounded-xl border border-transparent bg-slate-100/80 px-4 py-3 text-slate-800 transition-colors duration-200 placeholder:text-slate-400 focus:border-green-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-green-200";

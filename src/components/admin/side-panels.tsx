@@ -1,6 +1,6 @@
 import { and, asc, desc, eq, gte, count } from "drizzle-orm";
 import Link from "next/link";
-import { CreateTeacherLoginForm, ResetPasswordForm } from "@/components/admin/auth-forms";
+import { CreateParentLoginForm, CreateStudentLoginForm, CreateTeacherLoginForm, ResetPasswordForm } from "@/components/admin/auth-forms";
 import { Badge, Panel } from "@/components/admin/ui";
 import { classSessions, db, guardians, invoices, leadStatuses, progressReports, students, teachers, users } from "@/db";
 import { formatMoney } from "@/lib/admin/format";
@@ -12,7 +12,7 @@ import { setUserActive } from "@/lib/auth/actions";
 
 type Row = Record<string, unknown> & { id: string };
 
-const btn = "rounded-lg border border-brand-300 px-3 py-1.5 text-sm font-semibold text-brand-700 hover:bg-brand-50";
+const btn = "rounded-lg border border-brand-300 px-3 py-2.5 text-sm sm:py-1.5 font-semibold text-brand-700 hover:bg-brand-50";
 const small = "mt-1 text-sm text-muted";
 
 function waLink(phone: string) {
@@ -114,7 +114,9 @@ async function LeadPanel({ row }: { row: Row }) {
 
 async function StudentPanel({ row, tz }: { row: Row; tz: string }) {
   const id = row.id;
-  const [upcoming, bills, reports, [guardian], [{ n: doneCount }]] = await Promise.all([
+  const studentUserId = row.userId as string | null;
+  const [[studentLogin], upcoming, bills, reports, [guardian], [{ n: doneCount }]] = await Promise.all([
+    studentUserId ? db.select().from(users).where(eq(users.id, studentUserId)).limit(1) : Promise.resolve([]),
     db
       .select()
       .from(classSessions)
@@ -146,6 +148,36 @@ async function StudentPanel({ row, tz }: { row: Row; tz: string }) {
           </Link>
         </div>
         <p className={small}>{doneCount} classes completed</p>
+      </Panel>
+
+      <Panel title="Student portal login">
+        {studentLogin ? (
+          <>
+            <p className="text-sm">
+              Username <span className="font-bold text-brand-800">{studentLogin.username ?? studentLogin.email}</span> · <Badge value={studentLogin.active ? "active" : "paused"} />
+            </p>
+            <div className="mt-3 space-y-3">
+              <ResetPasswordForm userId={studentLogin.id} />
+              <form action={setUserActive.bind(null, studentLogin.id, !studentLogin.active)}>
+                <button
+                  type="submit"
+                  className={`rounded-lg border px-3 py-1.5 text-sm font-semibold ${studentLogin.active ? "border-red-300 text-red-700 hover:bg-red-50" : "border-brand-300 text-brand-700 hover:bg-brand-50"}`}
+                >
+                  {studentLogin.active ? "Deactivate login" : "Reactivate login"}
+                </button>
+              </form>
+            </div>
+          </>
+        ) : row.guardianId ? (
+          <>
+            <p className="text-sm text-muted">No login yet. A student login shows only this child&apos;s own classes, lessons and certificates.</p>
+            <div className="mt-3">
+              <CreateStudentLoginForm studentId={row.id} />
+            </div>
+          </>
+        ) : (
+          <p className="text-sm text-muted">Link this student to a parent first, then you can create their login.</p>
+        )}
       </Panel>
 
       {guardian && (
@@ -215,9 +247,41 @@ async function StudentPanel({ row, tz }: { row: Row; tz: string }) {
 }
 
 async function GuardianPanel({ row }: { row: Row }) {
-  const kids = await db.select().from(students).where(eq(students.guardianId, row.id)).orderBy(asc(students.name));
+  const parentUserId = row.userId as string | null;
+  const [kids, [loginUser]] = await Promise.all([
+    db.select().from(students).where(eq(students.guardianId, row.id)).orderBy(asc(students.name)),
+    parentUserId ? db.select().from(users).where(eq(users.id, parentUserId)).limit(1) : Promise.resolve([]),
+  ]);
   return (
     <>
+      <Panel title="Parent login (Student Portal)">
+        {loginUser ? (
+          <>
+            <p className="text-sm">
+              Username <span className="font-bold text-brand-800">{loginUser.username ?? loginUser.email}</span> · <Badge value={loginUser.active ? "active" : "paused"} />
+            </p>
+            <p className={small}>{loginUser.lastLoginAt ? `Last sign-in ${formatDateTime(loginUser.lastLoginAt, "UTC")} UTC` : "Has not signed in yet"}</p>
+            <div className="mt-3 space-y-3">
+              <ResetPasswordForm userId={loginUser.id} />
+              <form action={setUserActive.bind(null, loginUser.id, !loginUser.active)}>
+                <button
+                  type="submit"
+                  className={`rounded-lg border px-3 py-1.5 text-sm font-semibold ${loginUser.active ? "border-red-300 text-red-700 hover:bg-red-50" : "border-brand-300 text-brand-700 hover:bg-brand-50"}`}
+                >
+                  {loginUser.active ? "Deactivate login" : "Reactivate login"}
+                </button>
+              </form>
+            </div>
+          </>
+        ) : (
+          <>
+            <p className="text-sm text-muted">No login yet. Creates a family login this parent uses to see classes, lessons and progress for all their children.</p>
+            <div className="mt-3">
+              <CreateParentLoginForm guardianId={row.id} />
+            </div>
+          </>
+        )}
+      </Panel>
       <Panel title="Contact">
         <Contact email={row.email as string} phone={row.phone as string} />
       </Panel>

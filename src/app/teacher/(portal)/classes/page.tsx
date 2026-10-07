@@ -85,7 +85,7 @@ export default async function DailyClassesPage({ searchParams }: Props) {
 
     return (
       <tr key={c.id} className="border-t border-slate-100 align-middle">
-        <td className="relative min-w-[15rem] py-4 pl-5 pr-3">
+        <td data-primary className="relative min-w-[15rem] py-4 pl-5 pr-3">
           <span className="absolute inset-y-3 left-0 w-1 rounded-full bg-blue-500" aria-hidden />
           <Link href={`/teacher/students/${c.studentId}`} className="font-sans text-[15px] font-bold uppercase text-navy hover:underline">
             {c.studentName}
@@ -100,16 +100,16 @@ export default async function DailyClassesPage({ searchParams }: Props) {
             </p>
           )}
         </td>
-        <td className="whitespace-nowrap px-3 py-4 text-center">
-          <Link href={`/teacher/classes/${c.id}`} className="text-lg font-bold text-navy hover:underline" title="Lesson notes">
+        <td data-label="Time" className="whitespace-nowrap px-3 py-4 text-center">
+          <Link href={`/teacher/classes/${c.id}`} className="tap text-lg font-bold text-navy hover:underline" title="Lesson notes">
             {formatTime12(c.startsAt, tz)}
           </Link>
           {studentLocal && <p className="text-xs text-slate-400">Student: {studentLocal}</p>}
         </td>
-        <td className="px-3 py-4 text-center">
+        <td data-label="Course" className="px-3 py-4 text-center">
           {c.course ? <span className="inline-block whitespace-nowrap rounded-xl bg-green-500 px-5 py-2.5 text-sm font-bold text-white">{c.course}</span> : <span className="text-slate-300">—</span>}
         </td>
-        <td className="px-3 py-4">
+        <td data-label="Swap" className="px-3 py-4">
           <div className="flex items-center justify-center gap-2">
             <span className="flex h-11 w-14 items-center justify-center rounded-xl bg-slate-100 text-xs font-semibold text-slate-400">
               {swapped.has(c.id) ? "Swapped" : "—"}
@@ -130,13 +130,13 @@ export default async function DailyClassesPage({ searchParams }: Props) {
             )}
           </div>
         </td>
-        <td className="px-3 py-4">
+        <td data-label="Status" className="px-3 py-4">
           <div className="flex items-center justify-center gap-1.5 whitespace-nowrap">
             <Pill tone={c.isTrial ? "amber" : "green"}>{c.isTrial ? "Trial" : "Regular"}</Pill>
             <StatusPill status={c.status} />
           </div>
         </td>
-        <td className="py-4 pl-3 pr-5">
+        <td data-wide className="py-4 pl-3 pr-5">
           <div className="flex items-center justify-end gap-2">
             {c.status === "scheduled" && (
               <>
@@ -183,7 +183,7 @@ export default async function DailyClassesPage({ searchParams }: Props) {
               </Link>
             )}
             {(c.status === "completed" || (isRecovery && !eligible)) && (
-              <Link href={`/teacher/classes/${c.id}`} className="text-sm font-semibold text-green-600 hover:underline">
+              <Link href={`/teacher/classes/${c.id}`} className="tap text-sm font-semibold text-green-600 hover:underline">
                 {c.status === "completed" ? "Notes" : "Details"}
               </Link>
             )}
@@ -219,7 +219,7 @@ export default async function DailyClassesPage({ searchParams }: Props) {
 
       <TCard className="overflow-hidden p-0">
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[1000px] text-left">
+          <table className="stack-table w-full min-w-[1000px] text-left">
             <thead>
               <tr className="text-[15px] font-bold text-navy">
                 <th scope="col" className="px-5 py-5">Student/Parent</th>
@@ -257,7 +257,7 @@ export default async function DailyClassesPage({ searchParams }: Props) {
       <p className="mt-4 flex flex-wrap items-center gap-2 text-sm text-slate-500">
         Showing the next {days} days. Times are in your time zone ({tz}).
         {DAY_COUNTS.filter((d) => d !== days).map((d) => (
-          <Link key={d} href={`/teacher/classes?days=${d}`} className="font-semibold text-green-600 hover:underline">
+          <Link key={d} href={`/teacher/classes?days=${d}`} className="tap font-semibold text-green-600 hover:underline">
             Show {d} days
           </Link>
         ))}

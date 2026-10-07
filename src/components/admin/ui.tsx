@@ -17,7 +17,7 @@ export function AdminPageHeader({
   return (
     <div className="mb-6">
       {back && (
-        <Link href={back.href} className="mb-2 inline-block text-sm font-medium text-brand-600 hover:underline">
+        <Link href={back.href} className="tap mb-2 inline-block text-sm font-medium text-brand-600 hover:underline">
           ← {back.label}
         </Link>
       )}
@@ -44,7 +44,7 @@ export function Panel({
   className?: string;
 }) {
   return (
-    <section className={cn("rounded-2xl border border-brand-100 bg-white shadow-sm", className)}>
+    <section className={cn("min-w-0 rounded-2xl border border-brand-100 bg-white shadow-sm", className)}>
       {title && (
         <header className="flex items-center justify-between gap-3 border-b border-brand-100 px-5 py-3.5">
           <h2 className="font-sans text-base font-semibold text-brand-800">{title}</h2>
@@ -136,6 +136,6 @@ export function EmptyState({ title, children }: { title: string; children?: Reac
 }
 
 export const linkButton =
-  "inline-flex items-center justify-center rounded-full bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700";
+  "inline-flex items-center justify-center rounded-full bg-brand-600 px-4 py-2 text-sm font-semibold text-white transition duration-200 hover:bg-brand-700 active:scale-[0.97]";
 export const linkButtonOutline =
-  "inline-flex items-center justify-center rounded-full border border-brand-600 px-4 py-2 text-sm font-semibold text-brand-700 hover:bg-brand-50";
+  "inline-flex items-center justify-center rounded-full border border-brand-600 px-4 py-2 text-sm font-semibold text-brand-700 transition duration-200 hover:bg-brand-50 active:scale-[0.97]";

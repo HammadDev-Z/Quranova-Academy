@@ -2,11 +2,6 @@ import "server-only";
 import { and, asc, desc, eq } from "drizzle-orm";
 import { db, courses, faqs, packages, posts, teachers, testimonials } from "@/db";
 
-export type Course = typeof courses.$inferSelect;
-export type Pkg = typeof packages.$inferSelect;
-export type Faq = typeof faqs.$inferSelect;
-export type Testimonial = typeof testimonials.$inferSelect;
-export type PublicTeacher = typeof teachers.$inferSelect;
 export type Post = typeof posts.$inferSelect & { readingMinutes: number };
 
 export const getCourses = () =>

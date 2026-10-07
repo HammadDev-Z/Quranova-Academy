@@ -7,6 +7,7 @@ import { IconCircle, PageTitle, TCard } from "@/components/teacher/ui";
 import { cn } from "@/components/ui";
 import { addDays, dayRange, shiftOf, todayKey } from "@/lib/admin/time";
 import { requireTeacher } from "@/lib/auth/session";
+import { DAY_MS } from "@/lib/constants";
 
 export const metadata = { title: "Student List" };
 
@@ -66,7 +67,7 @@ export default async function StudentListPage({ searchParams }: Props) {
               eq(classSessions.teacherId, me.teacherId),
               eq(classSessions.status, "completed"),
               eq(classSessions.lessonNotes, ""),
-              gte(classSessions.startsAt, new Date(dayStart.getTime() - 30 * 24 * 60 * 60 * 1000)),
+              gte(classSessions.startsAt, new Date(dayStart.getTime() - 30 * DAY_MS)),
               inArray(classSessions.studentId, ids),
             ),
           ),
@@ -125,7 +126,7 @@ export default async function StudentListPage({ searchParams }: Props) {
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[900px] text-left">
+          <table className="stack-table w-full min-w-[900px] text-left">
             <thead>
               <tr className="text-xs font-bold uppercase tracking-wider text-slate-500">
                 <th scope="col" className="px-3 py-4">Student</th>
@@ -145,12 +146,12 @@ export default async function StudentListPage({ searchParams }: Props) {
               )}
               {shown.map((s) => (
                 <tr key={s.id} className="border-t border-slate-100 align-middle">
-                  <td className="relative py-5 pl-5 pr-3">
+                  <td data-primary className="relative py-5 pl-5 pr-3">
                     <span className="absolute inset-y-4 left-0 w-1 rounded-full bg-rose-500" aria-hidden />
                     <div className="flex items-center gap-3">
                       <Icon name="user" className="h-6 w-6 flex-none text-rose-500" />
                       <div>
-                        <Link href={`/teacher/students/${s.id}`} className="font-sans text-lg font-bold uppercase text-navy hover:underline">
+                        <Link href={`/teacher/students/${s.id}`} className="tap font-sans text-lg font-bold uppercase text-navy hover:underline">
                           {s.name}
                         </Link>
                         <p className="flex flex-wrap items-center gap-2 text-slate-500">
@@ -161,17 +162,17 @@ export default async function StudentListPage({ searchParams }: Props) {
                       </div>
                     </div>
                   </td>
-                  <td className="px-3 py-5">
+                  <td data-label="Shift" className="px-3 py-5">
                     {s.shift ? <span className={cn("inline-block rounded-xl px-5 py-2.5 text-sm font-bold", shiftTone[s.shift])}>{s.shift}</span> : <span className="text-slate-300">—</span>}
                   </td>
-                  <td className="px-3 py-5">
+                  <td data-label="Basic course" className="px-3 py-5">
                     <CourseCell title={s.basicCourse} part={s.basicPart} page={s.basicPage} />
                   </td>
-                  <td className="px-3 py-5">
+                  <td data-label="Additional course" className="px-3 py-5">
                     <CourseCell title={s.additionalCourse} part={s.additionalPart} page={s.additionalPage} />
                   </td>
-                  <td className="px-3 py-5">
-                    <div className="flex items-center justify-center gap-2">
+                  <td data-wide className="px-3 py-5">
+                    <div className="flex flex-wrap items-center justify-center gap-2">
                       <IconCircle href={`/teacher/students/${s.id}#history`} label="Class history" icon="clock" tone="bg-green-500" />
                       <IconCircle href={`/teacher/students/${s.id}#reports`} label="Progress reports" icon="document" tone="bg-blue-500" />
                       <IconCircle href={`/teacher/students/${s.id}#schedule`} label="Upcoming schedule" icon="calendar" tone="bg-purple-500" />

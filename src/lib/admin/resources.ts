@@ -2,6 +2,7 @@ import "server-only";
 import { desc, eq } from "drizzle-orm";
 import type { SQLiteTable } from "drizzle-orm/sqlite-core";
 import {
+  certificates,
   classSessions,
   classStatuses,
   courses,
@@ -27,7 +28,7 @@ import { slugify } from "./format";
 import { nextStudentNo } from "./student-no";
 import { todayKey } from "./time";
 
-export type SaveContext = { existing?: Record<string, unknown>; tz: string };
+type SaveContext = { existing?: Record<string, unknown>; tz: string };
 
 export type Resource = {
   key: string;
@@ -80,7 +81,7 @@ async function nextInvoiceNumber() {
   return `INV-${String(n + 1).padStart(4, "0")}`;
 }
 
-export const resources: Record<string, Resource> = {
+const resources: Record<string, Resource> = {
   leads: {
     key: "leads",
     label: "Leads",
@@ -526,5 +527,32 @@ export const resources: Record<string, Resource> = {
   },
 };
 
-export const resourceList = Object.values(resources);
+resources.certificates = {
+  key: "certificates",
+  label: "Certificates",
+  singular: "certificate",
+  description: "Certificates families can view and print from their portal.",
+  table: certificates,
+  exportable: true,
+  searchColumns: ["number", "title"],
+  sort: { column: "issuedOn", dir: "desc" },
+  columns: [
+    { key: "number", label: "Number", kind: "text", primary: true, sub: "title" },
+    { key: "studentId", label: "Student", kind: "ref", ref: "students" },
+    { key: "issuedOn", label: "Issued", kind: "date" },
+  ],
+  fields: [
+    { name: "studentId", label: "Student", type: "select", optionsFrom: "students", required: true, half: true },
+    { name: "title", label: "Certificate title", type: "text", required: true, placeholder: "e.g. Completed Noorani Qaida", half: true },
+    { name: "issuedOn", label: "Issued on", type: "date", required: true, initial: "today", half: true },
+    { name: "note", label: "Message on the certificate", type: "textarea", hint: "Optional, shown under the title" },
+  ],
+  beforeSave: async (v, ctx) => {
+    if (ctx.existing) return v;
+    const [last] = await db.select({ number: certificates.number }).from(certificates).orderBy(desc(certificates.number)).limit(1);
+    const n = last ? parseInt(last.number.replace(/\D/g, ""), 10) || 0 : 0;
+    return { ...v, number: `CERT-${String(n + 1).padStart(4, "0")}` };
+  },
+};
+
 export const getResource = (key: string) => resources[key];

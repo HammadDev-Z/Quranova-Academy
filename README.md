@@ -34,6 +34,40 @@ npm run dev                    # http://localhost:3000
 | **Activity log** | Who changed what, and when |
 | **CSV export** | Leads, students, parents, teachers, classes and invoices |
 
+## Demo data
+
+```bash
+npm run demo:load      # demo accounts, a teacher, 6 students, 100+ classes, lessons, invoices, leads
+npm run demo:remove    # deletes exactly what demo:load created, nothing else
+```
+
+Demo sign-ins (deliberately weak passwords, local use only):
+
+| Portal | Email | Password |
+|---|---|---|
+| Admin `/admin/login` | admin@gmail.com | admin |
+| Teacher `/teacher/login` | teacher@gmail.com | teacher |
+| Parent `/student/login` | parent@gmail.com (or username QN1001) | parent |
+| Student `/student/login` | student@gmail.com (or username QS1001) | student |
+
+**Run `npm run demo:remove` before you put the site on a real server.** The loader refuses to run in production or against a hosted database. It records what it creates in `data/demo-ids.json`; keep that file until you remove the demo.
+
+## Student portal (students and parents)
+
+Families sign in at `/student` with a short username (like `QN1001`) or their email.
+
+- **Student logins:** Admin > Students > open a student > *Student portal login*. A student sees only their own classes, lessons and certificates and cannot add children.
+- **Create a parent login:** Admin > Parents > open a parent > *Parent login (Student Portal)*. The username is generated; you set the first password and share both securely. One login covers all of that parent's children.
+- **What families see:** next class with a live countdown and Join button (opens 10 minutes before), this month's class summary, children and progress, weekly schedule, upcoming classes, class history with lesson notes and homework, verified progress reports, certificates, and the lesson viewer.
+- **Mark as On Leave:** families can do this at least 2 hours before a class. It opens the teacher's 30-day recovery window (shown under the teacher's Reschedules).
+- **Lesson viewer:** upload page images under Admin > Lesson pages (course, part, first page number, images named 01, 02, 03...). Set each student's *current part and page* on their record and the viewer opens there. **Only upload material you have the right to use.**
+- **Certificates:** Admin > Certificates. Families can view and print them.
+- **Add another child:** families send a request that arrives in Admin > Leads, pre-filled.
+- **Installable:** the portal can be installed as an app (Profile > Install). It has its own manifest and generated icons.
+- **Remembered devices:** "keep me signed in" lasts 10 days and is listed on the Profile page, where all remembered devices can be signed out at once.
+
+Uploads need a larger request size than the Next.js default. `next.config.ts` allows 60 MB. **On Vercel the platform limit is about 4.5 MB per request**, so large uploads need a VPS (or a storage service) in production.
+
 ## Security notes
 
 - Passwords are hashed with scrypt. Sessions are random tokens stored hashed in the database, sent in an HTTP-only, SameSite cookie, and expire after 7 days.

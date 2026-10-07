@@ -1,4 +1,4 @@
-export const currencySymbols: Record<string, string> = { GBP: "£", USD: "$", EUR: "€", AUD: "A$", CAD: "C$", PKR: "Rs " };
+const currencySymbols: Record<string, string> = { GBP: "£", USD: "$", EUR: "€", AUD: "A$", CAD: "C$", PKR: "Rs " };
 
 export function formatMoney(minor: number, currency = "GBP"): string {
   const symbol = currencySymbols[currency] ?? `${currency} `;
@@ -17,7 +17,7 @@ export function slugify(input: string): string {
 }
 
 /** Escapes one CSV cell, and neutralises spreadsheet formula injection. */
-export function csvCell(value: unknown): string {
+function csvCell(value: unknown): string {
   let s = value instanceof Date ? value.toISOString() : String(value ?? "");
   if (/^[=+\-@\t\r]/.test(s)) s = `'${s}`;
   return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;

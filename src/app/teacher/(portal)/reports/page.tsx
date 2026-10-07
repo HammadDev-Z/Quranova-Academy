@@ -88,7 +88,7 @@ export default async function ReportsPage({ searchParams }: Props) {
 
       <TCard className="overflow-hidden p-0">
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[960px] text-left">
+          <table className="stack-table w-full min-w-[960px] text-left">
             <thead>
               <tr className="text-xs font-bold uppercase tracking-wider text-slate-500">
                 <th scope="col" className="px-6 py-5">Student</th>
@@ -110,12 +110,12 @@ export default async function ReportsPage({ searchParams }: Props) {
                 const href = rep ? `/teacher/reports/${rep.id}` : `/teacher/reports/new?studentId=${s.id}&month=${month}`;
                 return (
                   <tr key={s.id} className="border-t border-slate-100 align-middle">
-                    <td className="px-6 py-5">
+                    <td data-primary className="px-6 py-5">
                       <div className="flex items-center gap-3">
                         <span className="flex h-11 w-11 flex-none items-center justify-center rounded-xl bg-blue-50 font-bold text-blue-600" aria-hidden>
                           {s.name[0]?.toUpperCase()}
                         </span>
-                        <Link href={`/teacher/students/${s.id}`} className="font-sans text-lg font-bold text-navy hover:underline">
+                        <Link href={`/teacher/students/${s.id}`} className="tap font-sans text-lg font-bold text-navy hover:underline">
                           {s.name}
                         </Link>
                         <Link href={`/teacher/students/${s.id}#history`} title="Class history" aria-label={`${s.name} class history`} className="flex h-10 w-10 items-center justify-center rounded-full bg-green-100 text-green-600 hover:bg-green-200">
@@ -123,13 +123,13 @@ export default async function ReportsPage({ searchParams }: Props) {
                         </Link>
                       </div>
                     </td>
-                    <td className="px-3 py-5 text-center">
+                    <td data-label="Scheduled" className="px-3 py-5 text-center">
                       <span className="inline-flex h-10 min-w-12 items-center justify-center rounded-xl bg-slate-100 px-3 text-lg font-bold text-slate-600">{scheduled.get(s.id) ?? 0}</span>
                     </td>
-                    <td className="px-3 py-5 text-center">
+                    <td data-label="Taken" className="px-3 py-5 text-center">
                       <span className="inline-flex h-10 min-w-12 items-center justify-center rounded-xl bg-green-100 px-3 text-lg font-bold text-green-600">{taken.get(s.id) ?? 0}</span>
                     </td>
-                    <td className="px-3 py-5">
+                    <td data-label="Basic course" className="px-3 py-5">
                       {s.basicCourse ? (
                         <>
                           <p className="font-semibold text-blue-600">{s.basicCourse}</p>
@@ -142,7 +142,7 @@ export default async function ReportsPage({ searchParams }: Props) {
                         <span className="text-slate-300">—</span>
                       )}
                     </td>
-                    <td className="px-3 py-5">
+                    <td data-label="Additional course" className="px-3 py-5">
                       {s.additionalCourse ? (
                         <>
                           <p className="font-semibold text-purple-600">{s.additionalCourse}</p>
@@ -154,7 +154,7 @@ export default async function ReportsPage({ searchParams }: Props) {
                         <span className="text-slate-300">—</span>
                       )}
                     </td>
-                    <td className="px-6 py-5">
+                    <td data-label="Report" className="px-6 py-5">
                       <div className="flex items-center justify-end gap-3">
                         <ReportPill status={rep?.status ?? null} />
                         <Link href={href} title={rep ? "Open report" : "Write report"} aria-label={`${rep ? "Open" : "Write"} report for ${s.name}`} className="flex h-11 w-11 items-center justify-center rounded-full bg-violet-100 text-violet-600 transition hover:bg-violet-200">

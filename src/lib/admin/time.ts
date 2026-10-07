@@ -139,16 +139,6 @@ export function formatDateShort(date: Date, tz: string): string {
   }).format(date);
 }
 
-/** "Sat" */
-export function formatWeekdayShort(date: Date, tz: string): string {
-  return new Intl.DateTimeFormat("en-GB", { timeZone: safeZone(tz), weekday: "short" }).format(date);
-}
-
-/** Hour (0-23) of a Date in tz. */
-export function hourOf(date: Date, tz: string): number {
-  return Number(parts(date.getTime(), safeZone(tz)).hour);
-}
-
 /** Day of week in tz, 0 = Monday ... 6 = Sunday, and minutes since local midnight. */
 export function weekdayAndMinutes(date: Date, tz: string): { weekday: number; minutes: number } {
   const zone = safeZone(tz);
@@ -157,6 +147,11 @@ export function weekdayAndMinutes(date: Date, tz: string): { weekday: number; mi
   const [y, m, d] = key.split("-").map(Number);
   const weekday = (new Date(Date.UTC(y, m - 1, d)).getUTCDay() + 6) % 7;
   return { weekday, minutes: Number(p.hour) * 60 + Number(p.minute) };
+}
+
+/** Hour (0-23) of a Date in tz. */
+function hourOf(date: Date, tz: string): number {
+  return Number(parts(date.getTime(), safeZone(tz)).hour);
 }
 
 /** Morning / Afternoon / Evening / Night label for a class start time. */

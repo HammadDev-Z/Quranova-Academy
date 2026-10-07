@@ -10,8 +10,11 @@ import type { NextRequest } from "next/server";
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const hasSession = request.cookies.has("qa_session");
-  const isTeacher = pathname.startsWith("/teacher");
-  const loginPath = isTeacher ? "/teacher/login" : "/admin/login";
+  const loginPath = pathname.startsWith("/teacher")
+    ? "/teacher/login"
+    : pathname.startsWith("/student")
+      ? "/student/login"
+      : "/admin/login";
 
   let response: NextResponse;
   if (!hasSession && pathname !== loginPath) {
@@ -27,5 +30,5 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/admin", "/admin/:path*", "/teacher", "/teacher/:path*"],
+  matcher: ["/admin", "/admin/:path*", "/teacher", "/teacher/:path*", "/student", "/student/:path*"],
 };

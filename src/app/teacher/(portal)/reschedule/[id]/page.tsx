@@ -6,14 +6,13 @@ import { SlotPicker } from "@/components/teacher/forms";
 import { PageTitle, StatusPill, TCard, btnGreen } from "@/components/teacher/ui";
 import { addDays, formatDateShort, formatTime12, todayKey } from "@/lib/admin/time";
 import { requireTeacher } from "@/lib/auth/session";
-import { MAX_RESCHEDULES, MIN_NOTICE_MINUTES, RECOVERY_STATUSES, RESCHEDULE_WINDOW_DAYS } from "@/lib/teacher/constants";
+import { DAY_MS } from "@/lib/constants";
+import { MAX_RESCHEDULES, MIN_NOTICE_MINUTES, RECOVERY_STATUSES, recoveryDeadline } from "@/lib/teacher/constants";
 import { slotsForDay } from "@/lib/teacher/slots";
 
 export const metadata = { title: "Reschedule class" };
 
 type Props = { params: Promise<{ id: string }>; searchParams: Promise<{ date?: string }> };
-
-const DAY_MS = 24 * 60 * 60 * 1000;
 
 export default async function ReschedulePage({ params, searchParams }: Props) {
   const me = await requireTeacher();
@@ -44,7 +43,7 @@ export default async function ReschedulePage({ params, searchParams }: Props) {
   const nowMs = new Date().getTime();
   const recovery = (RECOVERY_STATUSES as readonly string[]).includes(cls.status);
   const advance = cls.status === "scheduled" && cls.startsAt.getTime() > nowMs + MIN_NOTICE_MINUTES * 60000;
-  const deadline = cls.rescheduleDeadline ?? new Date(cls.startsAt.getTime() + RESCHEDULE_WINDOW_DAYS * DAY_MS);
+  const deadline = cls.rescheduleDeadline ?? recoveryDeadline(cls.startsAt);
 
   let blocked: string | null = null;
   if (!recovery && !advance) blocked = "This class can not be rescheduled in its current state.";

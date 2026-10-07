@@ -36,6 +36,8 @@ export default async function PortalLayout({ children }: { children: React.React
         { href: "/admin/classes", label: "Class schedule" },
         { href: "/admin/reports", label: "Progress reports", badge: submittedReports.n },
         { href: "/admin/materials", label: "Learning materials" },
+        { href: "/admin/lesson-pages", label: "Lesson pages" },
+        { href: "/admin/certificates", label: "Certificates" },
       ],
     },
     { title: "Money", items: [{ href: "/admin/invoices", label: "Invoices", badge: overdue.n }] },

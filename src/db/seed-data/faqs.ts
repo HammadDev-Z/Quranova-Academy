@@ -21,7 +21,7 @@ export const faqs = [
   },
   {
     q: "Are there discounts for more than one child?",
-    a: "Yes, there is a 15% sibling discount for each additional child. Mention it when you book your free trial.",
+    a: "Yes, there is a 10% sibling discount for each additional child. Mention it when you book your free trial.",
   },
   {
     q: "Can I change my schedule or cancel?",

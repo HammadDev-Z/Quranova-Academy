@@ -2,12 +2,11 @@ import Link from "next/link";
 import { CtaBanner } from "@/components/cta-banner";
 import { FaqList } from "@/components/faq-list";
 import { LogoMark } from "@/components/logo";
-import { Pricing } from "@/components/pricing";
 import { Button, Card, CheckList, Container, Section, SectionHeading } from "@/components/ui";
 import { getCourses, getFaqs, getPackages, getTestimonials } from "@/lib/content";
 import { getSite } from "@/lib/settings";
 
-const reasons = [
+const reasons = (siblingDiscountPercent: number) => [
   {
     title: "Truly one-to-one",
     text: "Your teacher teaches only you. Every mistake is heard and corrected, and the pace is yours.",
@@ -30,7 +29,7 @@ const reasons = [
   },
   {
     title: "Honest, simple pricing",
-    text: "Clear monthly plans, a 15% sibling discount, and you can change or cancel at any time.",
+    text: `Clear monthly plans, a ${siblingDiscountPercent}% sibling discount, and you can change or cancel at any time.`,
   },
 ];
 
@@ -62,7 +61,7 @@ export default async function Home() {
       {/* Hero */}
       <section className="relative overflow-hidden bg-brand-800 pattern text-white">
         <Container className="grid items-center gap-10 py-16 sm:py-24 lg:grid-cols-[1.15fr_0.85fr]">
-          <div>
+          <div className="stagger">
             <p lang="ar" dir="rtl" className="font-arabic text-2xl text-gold-300 sm:text-3xl lg:text-right">
               خَيْرُكُمْ مَنْ تَعَلَّمَ الْقُرْآنَ وَعَلَّمَهُ
             </p>
@@ -86,7 +85,7 @@ export default async function Home() {
             </p>
           </div>
 
-          <div className="relative mx-auto w-full max-w-sm">
+          <div className="sheet-in relative mx-auto w-full max-w-sm [animation-delay:200ms]">
             <div className="rounded-3xl border border-gold-500/40 bg-white/5 p-8 text-center backdrop-blur">
               <LogoMark className="mx-auto h-20 w-20" />
               <p lang="ar" dir="rtl" className="mt-6 font-arabic text-3xl text-gold-300">
@@ -107,7 +106,7 @@ export default async function Home() {
 
       {/* Trust strip */}
       <section className="border-b border-brand-100 bg-white">
-        <Container className="grid grid-cols-2 gap-y-6 py-8 text-center sm:grid-cols-3 lg:grid-cols-5">
+        <Container className="reveal grid grid-cols-2 gap-y-6 py-8 text-center sm:grid-cols-3 lg:grid-cols-5">
           {trustPoints.map((t) => (
             <div key={t.big}>
               <p className="font-serif text-2xl font-bold text-brand-700">{t.big}</p>
@@ -125,7 +124,7 @@ export default async function Home() {
           text="Everything is designed around the student: the teacher, the pace and the schedule."
         />
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {reasons.map((r) => (
+          {reasons(site.siblingDiscountPercent).map((r) => (
             <Card key={r.title}>
               <h3 className="text-lg font-bold text-brand-800">{r.title}</h3>
               <p className="mt-2 text-muted">{r.text}</p>
@@ -173,27 +172,6 @@ export default async function Home() {
             </li>
           ))}
         </ol>
-      </Section>
-
-      {/* Pricing */}
-      <Section tone="white">
-        <SectionHeading
-          eyebrow="Packages"
-          title="Simple, honest pricing"
-          text={`One-to-one live lessons from just £${cheapest} a month. Start with a free trial, no card needed.`}
-        />
-        <Pricing
-          compact
-          packages={packages.map((p) => ({ id: p.id, name: p.name, priceMinor: p.priceMinor, classesPerMonth: p.classesPerMonth, blurb: p.blurb, popular: p.popular }))}
-          rates={site.rates}
-          sessionMinutes={site.sessionMinutes}
-          siblingDiscountPercent={site.siblingDiscountPercent}
-        />
-        <p className="mt-8 text-center">
-          <Link href="/packages" className="font-semibold text-brand-600 hover:underline">
-            See everything included →
-          </Link>
-        </p>
       </Section>
 
       {/* Teachers promise */}

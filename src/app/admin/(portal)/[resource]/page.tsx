@@ -148,7 +148,42 @@ export default async function ResourceListPage({ params, searchParams }: Props) 
           )}
         </EmptyState>
       ) : (
-        <div className="overflow-x-auto rounded-2xl border border-brand-100 bg-white shadow-sm">
+        <>
+        {/* Phones: one card per row instead of a table that scrolls sideways. */}
+        <ul className="space-y-3 md:hidden">
+          {rows.map((row) => (
+            <li key={row.id} className="rounded-2xl border border-brand-100 bg-white p-4 shadow-sm">
+              <div className="text-base">
+                <Cell res={res} col={res.columns[0]} row={row} labels={labels} tz={tz} today={today} />
+              </div>
+              <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
+                {res.columns.slice(1).map((c) => (
+                  <div key={c.key} className="min-w-0">
+                    <dt className="text-xs font-semibold uppercase tracking-wide text-muted">{c.label}</dt>
+                    <dd className="mt-0.5 break-words">
+                      <Cell res={res} col={c} row={row} labels={labels} tz={tz} today={today} />
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+              <div className="mt-4 flex gap-2 border-t border-brand-100 pt-3">
+                <Link href={`/admin/${key}/${row.id}`} className={`${linkButtonOutline} flex-1`}>
+                  Edit
+                </Link>
+                <form action={deleteResource.bind(null, key, row.id)} className="flex-1">
+                  <ConfirmButton
+                    message={`Delete this ${res.singular}? This cannot be undone.`}
+                    className="w-full rounded-full border border-red-300 px-4 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-50 active:scale-[0.97]"
+                  >
+                    Delete
+                  </ConfirmButton>
+                </form>
+              </div>
+            </li>
+          ))}
+        </ul>
+
+        <div className="hidden overflow-x-auto rounded-2xl border border-brand-100 bg-white shadow-sm md:block">
           <table className="w-full min-w-[640px] text-left text-sm">
             <thead className="border-b border-brand-100 bg-brand-50/60 text-xs uppercase tracking-wide text-muted">
               <tr>
@@ -175,7 +210,7 @@ export default async function ResourceListPage({ params, searchParams }: Props) 
                       Edit
                     </Link>
                     <form action={deleteResource.bind(null, key, row.id)} className="ml-4 inline">
-                      <ConfirmButton message={`Delete this ${res.singular}? This cannot be undone.`} className="font-semibold text-red-700 hover:underline">
+                      <ConfirmButton message={`Delete this ${res.singular}? This cannot be undone.`} className="tap font-semibold text-red-700 hover:underline">
                         Delete
                       </ConfirmButton>
                     </form>
@@ -185,6 +220,7 @@ export default async function ResourceListPage({ params, searchParams }: Props) 
             </tbody>
           </table>
         </div>
+        </>
       )}
 
       {pages > 1 && (
@@ -245,7 +281,7 @@ function Cell({
           <button
             type="submit"
             title={`Click to turn ${on ? "off" : "on"}`}
-            className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${on ? "bg-green-100 text-green-800 hover:bg-green-200" : "bg-gray-200 text-gray-700 hover:bg-gray-300"}`}
+            className={`tap rounded-full px-2.5 py-0.5 text-xs font-semibold ${on ? "bg-green-100 text-green-800 hover:bg-green-200" : "bg-gray-200 text-gray-700 hover:bg-gray-300"}`}
           >
             {label}
           </button>

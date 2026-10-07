@@ -21,7 +21,7 @@ export const settingDefaults = {
   whatsappMessage: "Assalamu alaikum! I would like to book a free trial class at Quranova Academy.",
   trialDays: "3",
   sessionMinutes: "30",
-  siblingDiscountPercent: "15",
+  siblingDiscountPercent: "10",
   announcement: "",
   adminTimezone: "Asia/Karachi",
   rateUSD: "1.3",

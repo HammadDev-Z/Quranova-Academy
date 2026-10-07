@@ -1,18 +1,18 @@
 "use server";
 
 import { eq } from "drizzle-orm";
-import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { classSessions, classStatuses, courses, db, guardians, invoices, leadStatuses, leads, progressReports, students, teachers } from "@/db";
 import { requireAdmin } from "@/lib/auth/session";
 import { getRawSettings } from "@/lib/settings";
 import { logActivity } from "./log";
 import { nextStudentNo } from "./student-no";
-import { RECOVERY_STATUSES, RESCHEDULE_WINDOW_DAYS } from "@/lib/teacher/constants";
+import { revalidateAreas } from "@/lib/revalidate";
+import { RECOVERY_STATUSES, recoveryDeadline } from "@/lib/teacher/constants";
 import { paymentMethods } from "./resources";
 import { addDays, fromLocalInput, todayKey } from "./time";
 
-const refresh = () => revalidatePath("/admin", "layout");
+const refresh = () => revalidateAreas("admin");
 
 /* ───────── Leads ───────── */
 
@@ -79,7 +79,7 @@ export async function setClassStatus(classId: string, status: string) {
   if (!row) return;
   const patch: Partial<typeof classSessions.$inferInsert> = { status: status as (typeof classStatuses)[number] };
   if (RECOVERY_STATUSES.includes(status as (typeof RECOVERY_STATUSES)[number]) && !row.rescheduleDeadline) {
-    patch.rescheduleDeadline = new Date(row.startsAt.getTime() + RESCHEDULE_WINDOW_DAYS * 24 * 60 * 60 * 1000);
+    patch.rescheduleDeadline = recoveryDeadline(row.startsAt);
   }
   await db.update(classSessions).set(patch).where(eq(classSessions.id, classId));
   await logActivity(user, "updated", "class", classId, `Class marked ${status.replace(/_/g, " ")}`);

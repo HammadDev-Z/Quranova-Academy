@@ -4,7 +4,7 @@ import { useState } from "react";
 import { currencyMeta, everyPlanIncludes } from "@/content/plans";
 import { Button, CheckList, cn } from "./ui";
 
-export type PricingPackage = {
+type PricingPackage = {
   id: string;
   name: string;
   priceMinor: number;
