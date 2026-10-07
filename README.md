@@ -94,17 +94,18 @@ Form submissions are saved to the database and appear under Admin > Leads. If SM
 
 ## Deploy
 
-**VPS (Node):** the database is a file, so it persists on the server.
+**VPS (Ubuntu 22.04/24.04, e.g. Contabo):** push your code to GitHub, SSH into the server as root and run:
 
 ```bash
-npm ci
-npm run db:setup
-npm run build
-cp -r public .next/standalone/public && cp -r .next/static .next/standalone/.next/static
-PORT=3000 node .next/standalone/server.js    # run under PM2 or systemd, behind Nginx with HTTPS
+git clone --branch master https://github.com/hammadDev-Z/quranova-academy.git /tmp/q && ADMIN_EMAIL=you@example.com bash /tmp/q/deploy/setup-vps.sh
 ```
 
-Back up `data/app.db` regularly. Set `NEXT_PUBLIC_SITE_URL` to the real domain before building. Run behind HTTPS: the session cookie is `Secure` in production.
+It installs Node and Caddy, builds the app, starts it as a service, sets a firewall, and prints the site address and a generated admin password. With no domain the site is served at `https://<server-ip-with-dashes>.sslip.io` (free, real HTTPS; the session cookie is `Secure`, so plain `http://` logins would not work).
+
+- Update after pushing changes: `bash /opt/quranova/src/deploy/update.sh`
+- Settings live in `/etc/quranova.env` (SMTP, site URL); restart with `systemctl restart quranova`.
+- Data (database and uploads) is in `/var/lib/quranova/data`; `deploy/backup.sh` backs it up nightly to `/var/backups/quranova` (keeps 14 days; copy it off the server occasionally).
+- Once you buy a domain, point its A record at the server and re-run setup with `SITE_HOST=yourdomain.com`.
 
 **Vercel:** the filesystem is read-only, so use a hosted database. Create a free [Turso](https://turso.tech) database, set `DATABASE_URL` (`libsql://…`) and `DATABASE_AUTH_TOKEN` in Vercel, run `npm run db:setup` once from your machine with those variables, then deploy. Also set the SMTP variables.
 
